@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assinatura Digital</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- PDF Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+    <script src="https://unpkg.com/pdf-lib@latest/dist/pdf-lib.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.9.0/jsrsasign-all-min.js"></script>
+
+    <!-- Defina o caminho para o worker -->
+    <script>
+    </script>
+
+    <style>
+        /* Progress Indicator Styles */
+        .progress-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .progress-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            position: relative;
+        }
+        .progress-step::before {
+            content: '';
+            position: absolute;
+            top: 30px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background-color: #dee2e6;
+            z-index: 1;
+        }
+        .progress-step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            width: 0;
+            height: 3px;
+            background-color: #007bff;
+            z-index: 2;
+            transition: width 0.5s ease;
+        }
+        .progress-step.active::after {
+            width: 100%;
+        }
+        .progress-circle {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: #dee2e6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            z-index: 3;
+            position: relative;
+        }
+        .progress-step.active .progress-circle {
+            background-color: #007bff;
+        }
+        .progress-label {
+            margin-top: 10px;
+            color: #6c757d;
+        }
+        .progress-step.active .progress-label {
+            color: #007bff;
+            font-weight: bold;
+        }
+
+        /* PDF Page Styles */
+        .pdf-page-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        .pdf-page {
+            position: relative;
+            border: 1px solid #ddd;
+            max-width: 100%;
+            margin-bottom: 10px;
+            transition: border-color 0.3s ease;
+        }
+        .pdf-page.selected {
+            border: 3px solid #007bff;
+        }
+        #signatureOverlay {
+            position: absolute;
+            border: 2px dashed #007bff;
+            background-color: rgba(0,123,255,0.1);
+            cursor: move;
+            width: 400px;
+            height: 100px;
+            z-index: 10;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            transition: opacity 0.3s ease;
+            display: none;
+            padding: 10px;
+        }
+        #signatureContent {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            gap: 10px;
+            height: 100%;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.9);
+        }
+        #qrcode {
+            margin: 0;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            height: 60px;
+        }
+        #qrcode canvas {
+            width: 60px !important;
+            height: 60px !important;
+        }
+        .signature-info {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 60px;
+            font-size: 12px; /* Aumentado para corresponder ao PDF */
+            padding: 0;
+            margin: 0;
+            line-height: 1.4;
+        }
+        .drag-active {
+            opacity: 0.7;
+        }
+        .pdf-page canvas {
+            max-width: 100%;
+            height: auto;
+        }
+        #resizeHandle {
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            width: 15px;
+            height: 15px;
+            background: #007bff;
+            cursor: se-resize;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="text-end mb-3">
+            <a href="validar.html" class="btn btn-outline-primary me-2">
+                <i class="bi bi-check-circle"></i> Validar
+            </a>
+            <a href="documentacao.html" target="_blank" class="btn btn-outline-info">
+                <i class="bi bi-book"></i> Documentação
+            </a>
+        </div>
+        <h1 class="text-center mb-4">Assinatura Digital Devos</h1>
+        <div class="progress-container">
+            <div class="progress-step active" id="progressStep1">
+                <div class="progress-circle">1</div>
+                <div class="progress-label">Escolher arquivo</div>
+            </div>
+            <div class="progress-step" id="progressStep2">
+                <div class="progress-circle">2</div>
+                <div class="progress-label">Assinar arquivo</div>
+            </div>
+            <div class="progress-step" id="progressStep3">
+                <div class="progress-circle">3</div>
+                <div class="progress-label">Baixar arquivo</div>
+            </div>
+        </div>
+
+        <!-- Etapa 1: Escolher Arquivo -->
+        <div id="step1" class="card mb-4">
+            <div class="card-header">
+                <h3>Escolher Arquivo PDF</h3>
+            </div>
+            <div class="card-body">
+                <input type="file" id="pdfInput" accept=".pdf" class="form-control">
+            </div>
+        </div>
+
+        <!-- Etapa 2: Assinar Arquivo -->
+        <div id="step2" class="card mb-4" style="display:none;">
+            <div class="card-header">
+                <h3>Posicionar Assinatura</h3>
+            </div>
+            <div class="card-body">
+                <div id="pdfPreview" class="pdf-page-container">
+                    <!-- PDF pages will be rendered here -->
+                </div>
+
+                <div id="signatureOverlay" class="card">
+                    <div id="signatureContent" class="card-body p-2">
+                        <div id="qrcode"></div>
+                        <div class="signature-info">
+                            <div style="font-weight: bold;">Marco Tulio Cicero de Mesquita Porto</div>
+                            <div>CPF: 930.929.624-00</div>
+                            <div id="signatureDateTime"></div>
+                            <div><small class="text-muted">Verificação: <span id="validationDomain"></span></small></div>
+                        </div>
+                    </div>
+                    <div id="resizeHandle"></div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="alert alert-info">
+                    Clique na página para posicionar a assinatura e depois clique em "Assinar Documento"
+                </div>
+                <button id="signPdfBtn" class="btn btn-primary">Assinar Documento</button>
+            </div>
+        </div>
+
+        <!-- Etapa 3: Baixar Arquivo -->
+        <div id="step3" class="card mb-4" style="display:none;">
+            <div class="card-header">
+                <h3>Verificar e Baixar</h3>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-success">
+                    <h4>Detalhes da Assinatura</h4>
+                    <p><strong>Nome:</strong> Marco Tulio Cicero de Mesquita Porto</p>
+                    <p><strong>CPF:</strong> 930.929.624-00</p>
+                    <p><strong>Data e Hora:</strong> <span id="finalSignatureDateTime"></span></p>
+                    <p><strong>Verificação:</strong> <span id="finalValidationDomain"></span></p>
+                </div>
+                <button id="downloadPdfBtn" class="btn btn-success">
+                    <i class="bi bi-download"></i> Baixar Documento Assinado
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Configurações de usuário pré-definidas
+            const USER_DATA = {
+                nome: "Marco Tulio Cicero de Mesquita Porto",
+                cpf: "930.929.624-00",
+                email: "mtcporto@gmail.com",
+                telefone: "83 988281973"
+            };
+
+            function getValidationUrl() {
+                const hostname = window.location.hostname;
+                const protocol = window.location.protocol;
+                
+                // Se estiver em localhost
+                if (hostname === 'localhost') {
+                    return `${protocol}//${hostname}/assinaturadigital/validar.html`;
+                }
+                
+                // Para ambiente de produção
+                const baseDomain = hostname.split('.').slice(-2).join('.');
+                return `${protocol}//validar.${baseDomain}`;
+            }
+
+            const VALIDATION_URL = getValidationUrl();
+            
+            // Atualize o domínio de validação na interface
+            document.getElementById('validationDomain').textContent = 
+                `${window.location.hostname}/assinaturadigital/validar`;
+            document.getElementById('finalValidationDomain').textContent = 
+                `${window.location.hostname}/assinaturadigital/validar`;
+
+            // Elementos de progresso
+            const progressSteps = [
+                document.getElementById('progressStep1'),
+                document.getElementById('progressStep2'),
+                document.getElementById('progressStep3')
+            ];
+
+            // Função para atualizar progresso
+            function updateProgress(step) {
+                progressSteps.forEach((el, index) => {
+                    if (index < step) {
+                        el.classList.add('active');
+                    } else {
+                        el.classList.remove('active');
+                    }
+                });
+            }
+
+            // Elementos principais
+            const pdfInput = document.getElementById('pdfInput');
+            const pdfPreview = document.getElementById('pdfPreview');
+            const step1 = document.getElementById('step1');
+            const step2 = document.getElementById('step2');
+            const step3 = document.getElementById('step3');
+            const signatureOverlay = document.getElementById('signatureOverlay');
+            const signatureDateTime = document.getElementById('signatureDateTime');
+            const signPdfBtn = document.getElementById('signPdfBtn');
+            const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+
+            // Estado da aplicação
+            let pdfDoc = null;
+            let signedPdfBytes = null;
+            let currentPage = null;
+            let xOffset = 0;
+            let yOffset = 0;
+            let signaturePosition = {
+                relativeX: 0,
+                relativeY: 0,
+                overlayWidth: 400,
+                overlayHeight: 100
+            };
+
+            // Renderizar páginas do PDF
+            function renderPdfPages(pdf) {
+                pdfPreview.innerHTML = '';
+
+                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                    pdf.getPage(pageNum).then(function(page) {
+                        const scale = 1.5;
+                        const viewport = page.getViewport({scale: scale});
+
+                        const pageContainer = document.createElement('div');
+                        pageContainer.classList.add('pdf-page');
+                        pageContainer.dataset.pageNum = pageNum;
+
+                        const canvas = document.createElement('canvas');
+                        const context = canvas.getContext('2d');
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
+
+                        page.render({ canvasContext: context, viewport: viewport });
+                        pageContainer.appendChild(canvas);
+
+                        pageContainer.addEventListener('click', async function(e) {
+                            document.querySelectorAll('.pdf-page').forEach(el => el.classList.remove('selected'));
+                            pageContainer.classList.add('selected');
+                            currentPage = pageNum - 1;
+
+                            const pageRect = pageContainer.getBoundingClientRect();
+                            const mouseX = e.clientX - pageRect.left;
+                            const mouseY = e.clientY - pageRect.top;
+
+                            const posX = Math.max(0, Math.min(mouseX, pageRect.width - signaturePosition.overlayWidth));
+                            const posY = Math.max(0, Math.min(mouseY, pageRect.height - signaturePosition.overlayHeight));
+
+                            signatureOverlay.style.left = `${posX}px`;
+                            signatureOverlay.style.top = `${posY}px`;
+                            signatureOverlay.style.display = 'block';
+
+                            signaturePosition.relativeX = posX;
+                            signaturePosition.relativeY = posY;
+
+                            // Atualizar o QR code quando a assinatura é posicionada
+                            await updatePreviewQRCode();
+                        });
+
+                        pdfPreview.appendChild(pageContainer);
+                    });
+                }
+            }
+
+            // Tornar assinatura arrastável
+            let isDragging = false;
+            let currentX, currentY, initialX, initialY;
+
+            signatureOverlay.addEventListener('mousedown', dragStart);
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', dragEnd);
+
+            function dragStart(e) {
+                e.stopPropagation();
+                initialX = e.clientX - xOffset;
+                initialY = e.clientY - yOffset;
+
+                if (e.target === signatureOverlay || e.target.closest('#signatureOverlay')) {
+                    isDragging = true;
+                    signatureOverlay.classList.add('drag-active');
+                }
+            }
+
+            function drag(e) {
+                if (isDragging) {
+                    e.preventDefault();
+                    currentX = e.clientX - initialX;
+                    currentY = e.clientY - initialY;
+
+                    xOffset = currentX;
+                    yOffset = currentY;
+
+                    setTranslate(xOffset, yOffset, signatureOverlay);
+                }
+            }
+
+            function dragEnd() {
+                if (isDragging) {
+                    // Atualiza posição relativa após arrasto
+                    const pageContainer = document.querySelector('.pdf-page.selected');
+                    if (pageContainer) {
+                        const overlayRect = signatureOverlay.getBoundingClientRect();
+                        const pageRect = pageContainer.getBoundingClientRect();
+
+                        signaturePosition.relativeX = overlayRect.left - pageRect.left;
+                        signaturePosition.relativeY = overlayRect.top - pageRect.top;
+                    }
+
+                    isDragging = false;
+                    signatureOverlay.classList.remove('drag-active');
+                }
+            }
+
+            function setTranslate(xPos, yPos, el) {
+                el.style.transform = `translate3d(${xPos}px, ${yPos}px, 0)`;
+            }
+
+            // Redimensionamento do overlay
+            const resizeHandle = document.getElementById('resizeHandle');
+            let isResizing = false;
+            let initialWidth, initialHeight, initialMouseX, initialMouseY;
+
+            resizeHandle.addEventListener('mousedown', function(e) {
+                e.stopPropagation();
+                isResizing = true;
+                initialWidth = signatureOverlay.offsetWidth;
+                initialHeight = signatureOverlay.offsetHeight;
+                initialMouseX = e.clientX;
+                initialMouseY = e.clientY;
+            });
+
+            // Replace the mousemove event listener for resizing
+            document.addEventListener('mousemove', function(e) {
+                if (!isResizing) return;
+                
+                // Calculate new width and maintain aspect ratio
+                let newWidth = initialWidth + (e.clientX - initialMouseX);
+                let aspectRatio = initialWidth / initialHeight;
+                let newHeight = newWidth / aspectRatio;
+
+                // Define minimum sizes
+                const minWidth = 200;
+                const minHeight = minWidth / aspectRatio;
+                
+                newWidth = Math.max(newWidth, minWidth);
+                newHeight = Math.max(newHeight, minHeight);
+
+                // Check page boundaries if a page is selected
+                const selectedPage = document.querySelector('.pdf-page.selected');
+                if (selectedPage) {
+                    const pageRect = selectedPage.getBoundingClientRect();
+                    const overlayLeft = signatureOverlay.offsetLeft;
+                    const overlayTop = signatureOverlay.offsetTop;
+                    
+                    newWidth = Math.min(newWidth, pageRect.width - overlayLeft);
+                    newHeight = newWidth / aspectRatio;
+
+                    // Check if height exceeds page bounds
+                    if (overlayTop + newHeight > pageRect.height) {
+                        newHeight = pageRect.height - overlayTop;
+                        newWidth = newHeight * aspectRatio;
+                    }
+                }
+
+                signatureOverlay.style.width = newWidth + "px";
+                signatureOverlay.style.height = newHeight + "px";
+
+                signaturePosition.overlayWidth = newWidth;
+                signaturePosition.overlayHeight = newHeight;
+            });
+
+            document.addEventListener('mouseup', function() {
+                isResizing = false;
+            });
+
+            // Carregar PDF
+            pdfInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const fileReader = new FileReader();
+                    fileReader.onload = async function() {
+                        const typedarray = new Uint8Array(this.result);
+
+                        const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                        pdfDoc = pdf;
+                        renderPdfPages(pdf);
+
+                        // Mostra etapa de assinatura
+                        step1.style.display = 'none';
+                        step2.style.display = 'block';
+                        updateProgress(1);
+
+                        // Atualiza data/hora da assinatura
+                        const now = new Date();
+                        const formattedDateTime = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+                        signatureDateTime.textContent = formattedDateTime;
+                        document.getElementById('finalSignatureDateTime').textContent = formattedDateTime;
+
+                        // Atualiza o QR code
+                        await updatePreviewQRCode();
+                    };
+                    fileReader.readAsArrayBuffer(file);
+                }
+            });
+
+            // Assinar PDF
+            signPdfBtn.addEventListener('click', async function() {
+                try {
+                    if (currentPage === null) {
+                        alert('Por favor, selecione uma página e posicione a assinatura antes de assinar.');
+                        return;
+                    }
+
+                    const originalPdfBytes = await pdfInput.files[0].arrayBuffer();
+                    
+                    // Gerar assinatura digital
+                    const signatureData = await signPDF(originalPdfBytes);
+                    
+                    // Criar QR code com ID do documento
+                    const validationUrl = `${window.location.origin}/assinaturadigital/validar?id=${encodeURIComponent(signatureData.documentId)}`;
+                    
+                    // Atualizar preview do QR code
+                    const qrCodeCanvas = await generateQRCode(validationUrl);
+                    
+                    // Continuar com o código existente de geração do PDF
+                    const pdfDoc = await PDFLib.PDFDocument.load(originalPdfBytes);
+                    const pages = pdfDoc.getPages();
+                    const page = pages[currentPage];
+                    
+                    const selectedPage = document.querySelector('.pdf-page.selected');
+                    const pageRect = selectedPage.getBoundingClientRect();
+                    
+                    const pdfWidth = page.getWidth();
+                    const pdfHeight = page.getHeight();
+                    const displayWidth = pageRect.width;
+                    const displayHeight = pageRect.height;
+                    
+                    const scaleX = pdfWidth / displayWidth;
+                    const scaleY = pdfHeight / displayHeight;
+
+                    const pdfX = signaturePosition.relativeX * scaleX;
+                    const pdfY = pdfHeight - (signaturePosition.relativeY * scaleY) - (signaturePosition.overlayHeight * scaleY);
+
+                    // QR Code
+                    const qrSize = (signaturePosition.overlayHeight * scaleY); // Use overlay height as reference
+                    const qrCodeImageBytes = await fetch(qrCodeCanvas.toDataURL()).then(res => res.arrayBuffer());
+                    const qrCodeImageEmbed = await pdfDoc.embedPng(qrCodeImageBytes);
+
+                    page.drawImage(qrCodeImageEmbed, {
+                        x: pdfX,
+                        y: pdfY,
+                        width: qrSize,
+                        height: qrSize
+                    });
+
+                    // Text
+                    const fontSize = (signaturePosition.overlayHeight * scaleY) / 7.5; // Adjust divisor as needed
+                    const textHeight = qrSize;
+                    const spacing = textHeight / 4;
+                    const textX = pdfX + qrSize + (10 * scaleX);
+
+                    page.drawText(USER_DATA.nome, {
+                        x: textX,
+                        y: pdfY + textHeight - (spacing),
+                        size: fontSize,
+                        color: PDFLib.rgb(0, 0, 0)
+                    });
+
+                    page.drawText(`CPF: ${USER_DATA.cpf}`, {
+                        x: textX,
+                        y: pdfY + textHeight - (spacing * 2),
+                        size: fontSize,
+                        color: PDFLib.rgb(0, 0, 0)
+                    });
+
+                    const now = new Date();
+                    const dateTimeStr = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+                    page.drawText(dateTimeStr, {
+                        x: textX,
+                        y: pdfY + textHeight - (spacing * 3),
+                        size: fontSize,
+                        color: PDFLib.rgb(0, 0, 0)
+                    });
+
+                    page.drawText('Verificação: ' + `${window.location.hostname}/assinaturadigital/validar`, {
+                        x: textX,
+                        y: pdfY + textHeight - (spacing * 4),
+                        size: fontSize,
+                        color: PDFLib.rgb(0, 0, 0)
+                    });
+
+                    // Adicionar metadados da assinatura ao PDF
+                    pdfDoc.setSubject(JSON.stringify(signatureData));
+                    
+                    // Salvar o PDF
+                    signedPdfBytes = await pdfDoc.save();
+                    
+                    // Mostrar step 3
+                    step2.style.display = 'none';
+                    step3.style.display = 'block';
+                    updateProgress(3);
+
+                } catch (error) {
+                    console.error('Erro detalhado:', error);
+                    alert(`Erro ao assinar: ${error.message}`);
+                }
+            });
+
+            // Baixar PDF assinado
+            downloadPdfBtn.addEventListener('click', function() {
+                if (!signedPdfBytes) {
+                    alert('Assine o documento primeiro');
+                    return;
+                }
+
+                const blob = new Blob([signedPdfBytes], { type: 'application/pdf' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'documento_assinado.pdf';
+                link.click();
+            });
+
+            // Função para gerar QR code
+            function generateQRCode(url) {
+                return new Promise((resolve) => {
+                    const canvas = document.createElement('canvas');
+                    QRCode.toCanvas(canvas, url, { 
+                        width: 80,
+                        height: 80,
+                        margin: 0
+                    }, function (error) {
+                        if (error) console.error(error);
+                        resolve(canvas);
+                    });
+                });
+            }
+
+            // Atualizar a função que gera o QR code na preview
+            function updatePreviewQRCode() {
+                const qrContainer = document.getElementById('qrcode');
+                qrContainer.innerHTML = ''; // Limpa o container
+                return new Promise((resolve) => {
+                    QRCode.toCanvas(qrContainer, VALIDATION_URL, { 
+                        width: 60,
+                        height: 60,
+                        margin: 0
+                    }, function(error) {
+                        if (error) console.error(error);
+                        resolve();
+                    });
+                });
+            }
+        });
+
+        // Funções para assinatura digital
+        async function generateKeyPair() {
+            const keyPair = KEYUTIL.generateKeypair("RSA", 2048);
+            return {
+                privateKey: KEYUTIL.getPEM(keyPair.prvKeyObj, "PKCS8PRV"),
+                publicKey: KEYUTIL.getPEM(keyPair.pubKeyObj)
+            };
+        }
+
+        // Adicione esta função auxiliar antes da função signPDF
+        function str2b64(str) {
+            return hextob64(str);
+        }
+
+        // Atualize a função signPDF para usar as funções corretas do jsrsasign
+        async function signPDF(pdfBytes) {
+            try {
+                const keyPair = await generateKeyPair();
+                
+                // Create hash in chunks to avoid stack overflow
+                const chunkSize = 8192;
+                const md = new KJUR.crypto.MessageDigest({alg: "sha256", prov: "cryptojs"});
+                
+                for (let i = 0; i < pdfBytes.byteLength; i += chunkSize) {
+                    const chunk = new Uint8Array(pdfBytes.slice(i, i + chunkSize));
+                    md.updateHex(ArrayBufferToHexString(chunk.buffer));
+                }
+                
+                const pdfHash = md.digest();
+                const pdfHashB64 = hextob64(pdfHash);
+                
+                // Create signer
+                const sig = new KJUR.crypto.Signature({"alg": "SHA256withRSA"});
+                sig.init(keyPair.privateKey);
+                sig.updateString(pdfHashB64);
+                
+                const signature = sig.sign();
+                const documentId = pdfHashB64.replace(/[/+=]/g, ''); // Clean Base64 for URL
+                
+                return {
+                    signature: signature,
+                    publicKey: keyPair.publicKey,
+                    timestamp: new Date().toISOString(),
+                    documentHash: pdfHashB64,
+                    documentId: documentId
+                };
+            } catch (error) {
+                console.error('Erro na assinatura:', error);
+                throw error;
+            }
+        }
+
+        // Add this helper function to convert ArrayBuffer to hex string
+        function ArrayBufferToHexString(arrayBuffer) {
+            const uint8Array = new Uint8Array(arrayBuffer);
+            let hexString = '';
+            for (let i = 0; i < uint8Array.length; i++) {
+                let hex = uint8Array[i].toString(16);
+                if (hex.length === 1) {
+                    hex = '0' + hex;
+                }
+                hexString += hex;
+            }
+            return hexString;
+        }
+
+        // Remove or comment out the old arrayBufferToString function as it's no longer needed
+        // function arrayBufferToString(buffer) {
+        //     return String.fromCharCode.apply(null, new Uint8Array(buffer));
+        // }
+
+        // Função para verificar assinatura
+        async function verifySignature(pdfBytes, signatureData) {
+            try {
+                // Calcular hash do PDF
+                const pdfHash = str2b64(hash.sha256.hex(arrayBufferToString(pdfBytes)));
+                
+                // Verificar se o hash corresponde
+                if (pdfHash !== signatureData.documentHash) {
+                    return false;
+                }
+                
+                // Verificar assinatura
+                const sig = new KJUR.crypto.Signature({"alg": "SHA256withRSA"});
+                sig.init(signatureData.publicKey);
+                sig.updateString(signatureData.documentHash);
+                
+                return sig.verify(signatureData.signature);
+            } catch (error) {
+                console.error('Erro na verificação:', error);
+                return false;
+            }
+        }
+
+        async function generateQRCode(documentHash) {
+            const baseUrl = window.location.origin; // pega o domínio atual
+            const validationUrl = `${baseUrl}/assinaturadigital/validar?id=${encodeURIComponent(documentHash)}`;
+            
+            // Gerar QR Code com a URL completa
+            const qr = new QRCode(document.getElementById("qrcode"), {
+                text: validationUrl,
+                width: 128,
+                height: 128,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            // Adicionar link clicável abaixo do QR Code
+            const linkElement = document.createElement('a');
+            linkElement.href = validationUrl;
+            linkElement.textContent = 'Link para validação';
+            linkElement.className = 'mt-2 d-block';
+            document.getElementById("qrcode").appendChild(linkElement);
+        }
+    </script>
+</body>
+</html>
