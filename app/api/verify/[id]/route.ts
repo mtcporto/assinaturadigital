@@ -20,7 +20,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
     const evidence = JSON.parse(String(record.evidence_json)) as Evidence;
     const valid = evidence.id === id && record.status === 'signed' && verifySeal(evidence, String(record.evidence_mac));
     return NextResponse.json(
-      { valid, reason: valid ? 'record_seal_valid' : 'invalid_evidence', documentSha256: valid ? evidence.documentSha256 : undefined,
+      { valid, reason: valid ? 'record_seal_valid' : 'invalid_evidence', documentSha256: valid ? evidence.documentSha256 : undefined, createdAt: valid ? evidence.createdAt : undefined,
         note: valid ? 'Registro autenticado. Para validar um PDF específico, compare seu SHA-256 ao documentSha256 retornado.' : undefined },
       { status: valid ? 200 : 422, headers: { 'Cache-Control': 'no-store' } },
     );
