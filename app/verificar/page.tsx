@@ -1,0 +1,5 @@
+'use client';
+import { useState, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
+export default function VerifyEntry(){const [value,setValue]=useState('');const router=useRouter();function submit(e:FormEvent){e.preventDefault();const raw=value.trim();const match=raw.match(/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i);if(match)router.push('/verify/'+match[0]);}
+return <main className="hero"><span className="eyebrow">Consulta pública</span><h1>Verifique uma assinatura.</h1><p className="lead">Informe o identificador do registro ou cole o link de verificação recebido.</p><form className="panel" onSubmit={submit} style={{maxWidth:650}}><label htmlFor="record-id"><strong>Identificador ou link de verificação</strong></label><input id="record-id" value={value} onChange={e=>setValue(e.target.value)} placeholder="Cole o UUID ou link aqui" required style={{width:'100%',padding:14,margin:'14px 0 18px',border:'1px solid #cbd5e1',borderRadius:10}}/><button className="primary-button" type="submit">Verificar registro →</button></form></main>}
