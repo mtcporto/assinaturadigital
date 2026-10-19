@@ -10,7 +10,7 @@ type Verification = {
   note?: string;
 };
 
-const box: React.CSSProperties = { border: '1px solid #d1d5db', borderRadius: 12, padding: 20, marginTop: 22 };
+const box: React.CSSProperties = { border: '1px solid var(--line)', borderRadius: 20, padding: 30, marginTop: 22, background: '#fff', boxShadow: '0 10px 35px rgba(14,39,60,.035)' };
 const hashStyle: React.CSSProperties = { overflowWrap: 'anywhere', fontFamily: 'monospace', fontSize: 13 };
 
 export function VerifyClient({ id }: { id: string }) {
@@ -63,8 +63,8 @@ export function VerifyClient({ id }: { id: string }) {
   const matches = Boolean(record?.valid && record.documentSha256 && fileHash && fileHash.toLowerCase() === record.documentSha256.toLowerCase());
 
   return <section>
-    <h1>Verificar assinatura eletrônica</h1>
-    <p>Confira as evidências de um registro e compare o PDF recebido com o original.</p>
+    <span className="eyebrow">Verificação pública</span><h1>Verificar assinatura eletrônica</h1>
+    <p className="lead">Confira as evidências de um registro e compare o PDF recebido com o original.</p>
     <p>Identificador: <code style={hashStyle}>{id}</code></p>
     <div style={box} aria-live="polite">
       {loading ? <p>Consultando registro...</p> : error ? <p role="alert">{error}</p> : record?.valid ? <>
@@ -88,6 +88,6 @@ export function VerifyClient({ id }: { id: string }) {
       </div>}
     </div>
     <p style={{ marginTop: 24 }}><a href={'/api/verify/' + encodeURIComponent(id)}>Consultar resposta JSON</a> · <a href="/">Voltar ao início</a></p>
-    <p style={{ fontSize: 14, color: '#555' }}>A validação confirma a integridade das evidências e, quando o PDF é comparado, a correspondência dos bytes. Não comprova identidade civil nem equivale a assinatura qualificada ICP-Brasil.</p>
+    <p className="notice">A validação confirma a integridade das evidências e, quando o PDF é comparado, a correspondência dos bytes. Não comprova identidade civil nem equivale a assinatura qualificada ICP-Brasil.</p>
   </section>;
 }
