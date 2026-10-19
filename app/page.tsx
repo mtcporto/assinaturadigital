@@ -1,12 +1,11 @@
 import { auth } from '../auth';
 import { SignForm } from './sign-form';
-import { SealMark } from './seal-mark';
 export default async function Home() {
  const session=await auth();
  return <main>
  <section className="hero hero-editorial">
   <div className="hero-copy"><span className="eyebrow"><span className="eyebrow-line"/> Confiança que pode ser verificada</span><h1>Seus documentos com <em>mais valor.</em></h1><p className="lead">A tradição de um selo. A precisão da criptografia. Registre sua assinatura eletrônica e verifique a integridade de cada documento.</p><div className="hero-meta"><span>01 / ASSINAR</span><span>02 / REGISTRAR</span><span>03 / VERIFICAR</span></div></div>
-  <div className="hero-art" aria-hidden="true"><div className="art-orbit art-orbit-outer"/><div className="art-orbit art-orbit-inner"/><div className="hero-art-seal"><SealMark size={176}/></div><div className="art-caption">SELO / AUTENTICIDADE DIGITAL <span>EST. 2026</span></div></div>
+  <div className="hero-art hero-photo" role="img" aria-label="Contrato sobre uma mesa, com selo de cera e caneta" />
  </section>
  <div className="flow-grid"><div className="panel signing-panel">
  <div className="panel-kicker">SUA PRÓXIMA ASSINATURA <span>↗</span></div>
