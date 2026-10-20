@@ -8,6 +8,7 @@ type Verification = {
   documentSha256?: string;
   createdAt?: string;
   note?: string;
+  authentication?: 'webauthn-passkey' | 'legacy';
 };
 
 const box: React.CSSProperties = { border: '1px solid var(--line)', borderRadius: 20, padding: 30, marginTop: 22, background: '#fff', boxShadow: '0 10px 35px rgba(14,39,60,.035)' };
@@ -69,7 +70,8 @@ export function VerifyClient({ id }: { id: string }) {
     <div style={box} aria-live="polite">
       {loading ? <p>Consultando registro...</p> : error ? <p role="alert">{error}</p> : record?.valid ? <>
         <h2 style={{ color: '#166534' }}>✓ Registro de evidências válido</h2>
-        <p>O selo criptográfico do registro foi verificado com sucesso.</p>
+        <p>O selo criptográfico e os eventos de auditoria do registro foram verificados. Isso ainda não confirma que o PDF recebido é o mesmo documento.</p>
+        <p><strong>Confirmação da assinatura:</strong> {record.authentication === 'webauthn-passkey' ? 'Passkey (WebAuthn)' : record.authentication === 'legacy' ? 'Registro eletrônico legado' : 'Não informada'}</p>
         {record.createdAt && <p><strong>Registrado em:</strong> {new Date(record.createdAt).toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'medium' })}</p>}
         <p><strong>SHA-256 do PDF original:</strong></p>
         <p style={hashStyle}>{record.documentSha256}</p>
@@ -81,10 +83,11 @@ export function VerifyClient({ id }: { id: string }) {
       <label>Arquivo PDF<br/><input type="file" accept=".pdf,application/pdf" onChange={selectFile} /></label>
       {checking && <p role="status">Calculando SHA-256...</p>}
       {fileError && <p role="alert">{fileError}</p>}
+      {record?.valid && !fileHash && !checking && <p role="status" style={{color:'#8a5a32',fontWeight:650}}>Arquivo ainda não conferido. Selecione o PDF recebido para verificar a correspondência com o registro.</p>}
       {file && fileHash && <div role="status">
         <p><strong>Arquivo:</strong> {file.name}</p>
         <p><strong>SHA-256 calculado:</strong> <span style={hashStyle}>{fileHash}</span></p>
-        {record?.valid ? <p style={{ fontWeight: 700, color: matches ? '#166534' : '#b91c1c' }}>{matches ? '✓ PDF corresponde exatamente ao registro.' : '✗ PDF diferente do documento registrado.'}</p> : <p>Não é possível confirmar correspondência sem um registro válido.</p>}
+        {record?.valid ? <p style={{ fontWeight: 700, color: matches ? '#166534' : '#b91c1c' }}>{matches ? '✓ Integridade do PDF confirmada: os bytes correspondem ao documento registrado.' : '✗ Integridade do PDF não confirmada: este arquivo é diferente do documento registrado.'}</p> : <p>Não é possível confirmar correspondência sem um registro válido.</p>}
       </div>}
     </div>
     <div className="actions" style={{marginTop:24,flexWrap:'wrap'}}><a className="button-link" href="/documentos">Meus documentos →</a><a className="secondary-link" href="/">Assinar outro PDF</a><a className="secondary-link" href="/verificar">Verificar outro registro</a></div><p className="notice"><a href={'/api/verify/' + encodeURIComponent(id)}>Consultar resposta JSON</a></p>
