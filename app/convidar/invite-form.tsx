@@ -17,6 +17,6 @@ export function InviteForm(){
  <button className="primary-button" type="submit" disabled={busy}>{busy?'Criando…':'Criar convite'}</button></form>
  {message&&<p role="status">{message}</p>}
  {url&&<div className="invite-result result-panel"><label htmlFor="invite-link">Link individual (não compartilhe publicamente)</label><input className="invite-input mono" id="invite-link" readOnly value={url} onFocus={e=>e.currentTarget.select()}/><button className="primary-button" type="button" onClick={()=>navigator.clipboard.writeText(url).then(()=>setMessage('Link copiado. Envie somente ao destinatário.')).catch(()=>setMessage('Selecione e copie o link acima.'))}>Copiar link</button></div>}
- <p className="account-line">Nesta etapa, o convite permite consultar seu estado; a assinatura do destinatário será implementada na próxima etapa. Nenhum e-mail é enviado automaticamente.</p>
+ <p className="account-line">O destinatário pode visualizar e assinar o documento com sua própria conta e passkey. O envio do link ainda é manual.</p>
  </section>;
 }
