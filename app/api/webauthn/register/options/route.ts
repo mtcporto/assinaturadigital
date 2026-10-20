@@ -17,7 +17,7 @@ export async function POST(request: Request) {
    userID: signer.id,
    attestationType: 'none',
    authenticatorSelection: { residentKey: 'preferred', userVerification: 'required' },
-   excludeCredentials: credentials.rows.map(row => ({ id: String(row.credential_id), type: 'public-key' as const, transports: JSON.parse(String(row.transports_json)) }))
+   excludeCredentials: credentials.rows.map(row => ({ id: Buffer.from(String(row.credential_id), 'base64url'), type: 'public-key' as const, transports: JSON.parse(String(row.transports_json)) }))
   });
   const id = randomUUID(), now = new Date(), expires = new Date(now.getTime() + 300000);
   await db().execute({
