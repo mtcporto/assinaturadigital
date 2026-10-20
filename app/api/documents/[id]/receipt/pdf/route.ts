@@ -17,7 +17,7 @@ export async function GET(request: NextRequest, context: {params: Promise<{id:st
   return NextResponse.json({error:'invalid_id'},{status:400});
  try {
   const client = db();
-  const result = await client.execute({sql:'SELECT id, sha256, signer_id, signer_email, consent_text, consent_at, created_at, evidence_json, evidence_mac, status, object_key FROM documents WHERE id=? AND signer_id=? LIMIT 1',args:[id,session.user.id]});
+  const result = await client.execute({sql:'SELECT id, sha256, signer_id, signer_email, consent_text, consent_at, created_at, evidence_json, evidence_mac, status, object_key FROM documents d WHERE d.id=? AND (d.signer_id=? OR EXISTS (SELECT 1 FROM envelope_recipients r JOIN signing_envelopes e ON e.id=r.envelope_id WHERE r.document_id=d.id AND r.status='signed' AND e.owner_id=? AND e.document_sha256=d.sha256)) LIMIT 1',args:[id,session.user.id,session.user.id]});
   const record = result.rows[0];
   if (!record) return NextResponse.json({error:'not_found'},{status:404});
   const events = await client.execute({sql:'SELECT event_type, actor_id, details_json FROM audit_events WHERE document_id=?',args:[id]});
