@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
-import { currentSigner, relyingParty } from '../../../../lib/webauthn';
-import { db } from '../../../../lib/db';
-import { sha256 } from '../../../../lib/evidence';
-import { putPdf, deletePdf } from '../../../../lib/r2';
+import { currentSigner, relyingParty } from '../../../lib/webauthn';
+import { db } from '../../../lib/db';
+import { sha256 } from '../../../lib/evidence';
+import { putPdf, deletePdf } from '../../../lib/r2';
 
 export const runtime = 'nodejs';
 const consent = 'Declaro que li o documento selecionado e concordo em registrar minha assinatura eletrônica e as evidências desta operação.';
