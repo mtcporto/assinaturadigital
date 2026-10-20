@@ -4,11 +4,15 @@ import { db } from '../../lib/db';
 import { InviteForm } from './invite-form';
 
 export const dynamic = 'force-dynamic';
+const PAGE_SIZE = 25;
 
 type Invitation = {
  id: string; fileName: string; recipientEmail: string; status: string;
  createdAt: string; expiresAt: string; signedAt: string | null; documentId: string | null;
 };
+type Month = {key:string; total:number};
+
+const monthName = (key:string) => new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(key+'-01T12:00:00Z'));
 
 function statusLabel(row: Invitation) {
  if (row.status === 'signed' && row.documentId) return 'Assinado';
@@ -21,28 +25,49 @@ function dateLabel(value: string) {
  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('pt-BR', {dateStyle:'short',timeStyle:'short',timeZone:'America/Sao_Paulo'});
 }
 
-export default async function InvitePage() {
+export default async function InvitePage({searchParams}:{searchParams:Promise<{mes?:string;pagina?:string}>}) {
  const session = await auth();
  if (!session?.user?.id) redirect('/login');
+ const {mes,pagina} = await searchParams;
 
  let invitations: Invitation[] = [];
+ let months: Month[] = [];
  let error = false;
+ let selected: string | undefined;
+ let currentPage = 1;
  try {
-  const result = await db().execute({
-   sql: `SELECT r.id, e.file_name, r.email, r.status, r.created_at, r.expires_at, r.signed_at, r.document_id
-         FROM envelope_recipients r
-         JOIN signing_envelopes e ON e.id = r.envelope_id
-         WHERE e.owner_id = ?
-         ORDER BY r.created_at DESC LIMIT 100`,
+  const client = db();
+  const grouped = await client.execute({
+   sql: `SELECT substr(r.created_at,1,7) AS period, COUNT(*) AS total
+         FROM envelope_recipients r JOIN signing_envelopes e ON e.id=r.envelope_id
+         WHERE e.owner_id=? GROUP BY substr(r.created_at,1,7) ORDER BY period DESC`,
    args: [session.user.id]
   });
-  invitations = result.rows.map(row => ({
-   id: String(row.id), fileName: String(row.file_name), recipientEmail: String(row.email),
-   status: String(row.status), createdAt: String(row.created_at), expiresAt: String(row.expires_at),
-   signedAt: row.signed_at == null ? null : String(row.signed_at),
-   documentId: row.document_id == null ? null : String(row.document_id)
-  }));
+  months = grouped.rows.map(r=>({key:String(r.period),total:Number(r.total)})).filter(m=>/^\d{4}-\d{2}$/.test(m.key));
+  selected = months.some(m=>m.key===mes) ? mes : months[0]?.key;
+  if (selected) {
+   const total = months.find(m=>m.key===selected)?.total ?? 0;
+   const requestedPage = pagina && /^\d{1,6}$/.test(pagina) ? Number(pagina) : 1;
+   currentPage = Math.min(Math.max(1,requestedPage),Math.max(1,Math.ceil(total/PAGE_SIZE)));
+   const result = await client.execute({
+    sql: `SELECT r.id, e.file_name, r.email, r.status, r.created_at, r.expires_at, r.signed_at, r.document_id
+          FROM envelope_recipients r JOIN signing_envelopes e ON e.id=r.envelope_id
+          WHERE e.owner_id=? AND substr(r.created_at,1,7)=?
+          ORDER BY r.created_at DESC, r.id DESC LIMIT ? OFFSET ?`,
+    args: [session.user.id,selected,PAGE_SIZE,(currentPage-1)*PAGE_SIZE]
+   });
+   invitations = result.rows.map(row=>({
+    id:String(row.id),fileName:String(row.file_name),recipientEmail:String(row.email),
+    status:String(row.status),createdAt:String(row.created_at),expiresAt:String(row.expires_at),
+    signedAt:row.signed_at==null?null:String(row.signed_at),
+    documentId:row.document_id==null?null:String(row.document_id)
+   }));
+  }
  } catch { error = true; }
+ const years = [...new Set(months.map(m=>m.key.slice(0,4)))];
+ const selectedTotal = months.find(m=>m.key===selected)?.total ?? 0;
+ const totalPages = Math.ceil(selectedTotal/PAGE_SIZE);
+ const pageHref = (page:number) => '/convidar?mes='+encodeURIComponent(selected??'')+'&pagina='+page;
 
  return <main>
   <section className="hero">
@@ -51,28 +76,48 @@ export default async function InvitePage() {
    <p className="lead">Prepare um documento, convide um destinatário e acompanhe o resultado.</p>
   </section>
   <InviteForm />
-  <section className="panel" style={{marginTop:'2rem'}}>
+  <section style={{marginTop:'2rem'}}>
    <span className="eyebrow">Área do remetente</span>
    <h2>Convites enviados</h2>
-   <p className="account-line">Acompanhe os convites criados por esta conta. Os dados são atualizados ao recarregar a página.</p>
-   {error ? <p role="alert">Não foi possível carregar os convites. Tente atualizar a página.</p>
-    : invitations.length === 0 ? <p>Nenhum convite enviado ainda. Crie o primeiro acima.</p>
-    : <div className="document-list">
-      {invitations.map(invitation => <article className="document-item" key={invitation.id}>
-       <div>
-        <strong>{invitation.fileName}</strong>
-        <p className="account-line">Destinatário: {invitation.recipientEmail}</p>
-        <p className="account-line">Criado em {dateLabel(invitation.createdAt)} · Prazo: {dateLabel(invitation.expiresAt)}</p>
-        <p><strong>Situação: {statusLabel(invitation)}</strong>{invitation.signedAt ? ` · Assinado em ${dateLabel(invitation.signedAt)}` : ''}</p>
+   <p className="account-line">Consulte os convites por ano e mês. Atualize a página para ver novas assinaturas.</p>
+   <div className="documents-layout">
+    <aside className="panel documents-sidebar">
+     <h2>Períodos</h2>
+     {years.length===0 ? <p className="account-line">Nenhum período disponível.</p> : years.map(year=><section key={year}>
+      <h3>{year}</h3>
+      <div className="month-list">{months.filter(m=>m.key.startsWith(year)).map(m=>
+       <a key={m.key} className={m.key===selected?'month-link active':'month-link'} href={'/convidar?mes='+m.key}>
+        <span>{monthName(m.key).replace(/ de \d{4}$/,'')}</span><span>{m.total}</span>
+       </a>)}</div>
+     </section>)}
+    </aside>
+    <section className="panel documents-main">
+     {error ? <p role="alert">Não foi possível carregar os convites. Tente atualizar a página.</p>
+      : months.length===0 ? <><h2>Nenhum convite enviado ainda</h2><p>Crie o primeiro convite no formulário acima.</p></>
+      : <>
+       <span className="eyebrow">Histórico de convites</span>
+       <h2 style={{textTransform:'capitalize'}}>{selected?monthName(selected):'Convites'}</h2>
+       <p className="account-line">{selectedTotal} {selectedTotal===1?'convite':'convites'} neste período · Página {currentPage} de {totalPages}</p>
+       <div className="document-list">
+        {invitations.map(invitation=><article className="document-item" key={invitation.id}>
+         <div>
+          <strong>{invitation.fileName}</strong>
+          <p className="account-line">Destinatário: {invitation.recipientEmail}</p>
+          <p className="account-line">Criado em {dateLabel(invitation.createdAt)} · Prazo: {dateLabel(invitation.expiresAt)}</p>
+          <p><strong>Situação: {statusLabel(invitation)}</strong>{invitation.signedAt?` · Assinado em ${dateLabel(invitation.signedAt)}`:''}</p>
+         </div>
+         <div className="actions">{invitation.status==='signed'&&invitation.documentId?
+          <a className="secondary-link" href={`/verify/${invitation.documentId}`}>Verificar assinatura</a>:null}</div>
+        </article>)}
        </div>
-       <div className="actions">
-        {invitation.status === 'signed' && invitation.documentId ? <>
-         <a className="secondary-link" href={`/verify/${invitation.documentId}`}>Verificar assinatura</a>
-        </> : null}
-       </div>
-      </article>)}
-     </div>}
-   {invitations.length === 100 ? <p className="notice">Exibindo os 100 convites mais recentes.</p> : null}
+       {totalPages>1?<nav className="actions" aria-label="Páginas dos convites" style={{marginTop:'1.5rem'}}>
+        {currentPage>1?<a className="secondary-link" href={pageHref(currentPage-1)}>← Anterior</a>:null}
+        <span className="account-line">Página {currentPage} de {totalPages}</span>
+        {currentPage<totalPages?<a className="secondary-link" href={pageHref(currentPage+1)}>Próxima →</a>:null}
+       </nav>:null}
+      </>}
+    </section>
+   </div>
   </section>
  </main>;
 }
