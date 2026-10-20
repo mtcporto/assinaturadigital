@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   if (credentials.rows.length >= 10) return NextResponse.json({ error: 'credential_limit' }, { status: 429 });
   const options = await generateRegistrationOptions({
    rpName: 'Selo', rpID, userName: signer.email,
-   userID: new TextEncoder().encode(signer.id),
+   userID: signer.id,
    attestationType: 'none',
    authenticatorSelection: { residentKey: 'preferred', userVerification: 'required' },
    excludeCredentials: credentials.rows.map(row => ({ id: String(row.credential_id), transports: JSON.parse(String(row.transports_json)) }))
