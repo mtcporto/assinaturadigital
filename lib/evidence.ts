@@ -1,7 +1,7 @@
 import { createHash, createHmac, timingSafeEqual, randomUUID } from 'node:crypto';
 
 export type Evidence = {
-  version: 1;
+  version: 1 | 2;
   id: string;
   documentSha256: string;
   signerId: string;
@@ -9,6 +9,7 @@ export type Evidence = {
   consentText: string;
   consentAt: string;
   createdAt: string;
+  webauthn?: { intentId: string; credentialId: string; challenge: string; assertionSha256: string; consentSha256: string; rpId: string; origin: string; counter: number };
 };
 
 export function sha256(data: Uint8Array): string {
@@ -21,7 +22,11 @@ export function makeEvidence(input: Omit<Evidence, 'version' | 'id' | 'createdAt
 
 // Explicit canonical serialization: avoid dependence on object key insertion order.
 export function canonicalEvidence(e: Evidence): string {
-  return JSON.stringify([e.version,e.id,e.documentSha256,e.signerId,e.signerEmail,e.consentText,e.consentAt,e.createdAt]);
+  const base = [e.version,e.id,e.documentSha256,e.signerId,e.signerEmail,e.consentText,e.consentAt,e.createdAt];
+  if (e.version === 1) return JSON.stringify(base);
+  if (!e.webauthn) throw new Error('Missing WebAuthn proof');
+  const w = e.webauthn;
+  return JSON.stringify([...base,w.intentId,w.credentialId,w.challenge,w.assertionSha256,w.consentSha256,w.rpId,w.origin,w.counter]);
 }
 
 function key(): Buffer {
