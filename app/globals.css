@@ -36,3 +36,25 @@
 .invitation-details p{margin:0;overflow-wrap:anywhere}
 .invitation-actions{display:flex;flex-wrap:wrap;gap:12px;margin:24px 0}
 @media(max-width:760px){.invite-form,.invite-result{max-width:100%}}
+
+/* Sender invitation history: compact actions and legible states */
+.invitation-item{align-items:flex-start;gap:24px}
+.invitation-info{flex:1 1 260px;min-width:0}
+.invitation-filename{display:block;overflow-wrap:anywhere}
+.invitation-status-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px!important}
+.invitation-status{display:inline-flex;align-items:center;border-radius:100px;padding:3px 10px;font-size:12px;font-weight:750;line-height:1.6}
+.invitation-status--signed{background:#e6f3eb;color:#245b42}
+.invitation-status--pending{background:#fff3dc;color:#825818}
+.invitation-status--expired{background:#f0eee9;color:#656a66}
+.invitation-status--cancelled{background:#f8e9e6;color:#924938}
+.invitation-item-actions{flex:0 1 320px;justify-content:flex-end;gap:8px!important}
+.invitation-item-actions .secondary-link,.invitation-item-actions button.secondary-link{padding:8px 11px;min-height:36px;font-size:12px;background:#fff}
+.invitation-receipts{position:relative;min-width:0}
+.invitation-receipts summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:5px;padding:8px 11px;min-height:36px;color:#87503c;font-size:12px;font-weight:650}
+.invitation-receipts summary::-webkit-details-marker{display:none}
+.invitation-receipts summary::after{content:' ▾';margin-left:7px}
+.invitation-receipts[open] summary::after{content:' ▴'}
+.invitation-receipts-links{display:grid;gap:3px;position:absolute;right:0;top:calc(100% + 4px);min-width:155px;z-index:2;padding:7px;background:#fff;border:1px solid var(--line);border-radius:6px;box-shadow:0 10px 22px rgba(35,47,43,.1)}
+.invitation-receipts-links a{padding:7px 10px;font-size:12px;border-radius:4px}
+.invitation-receipts-links a:hover{background:#f8f3ee;text-decoration:none}
+@media(max-width:900px){.invitation-item{display:block}.invitation-item-actions{justify-content:flex-start;margin-top:14px!important}}
