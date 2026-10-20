@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { currentSigner, relyingParty } from '../../../../../lib/webauthn';
-import { db } from '../../../../../lib/db';
+import { currentSigner, relyingParty } from '../../../../../../lib/webauthn';
+import { db } from '../../../../../../lib/db';
 
 export const runtime='nodejs';
 
