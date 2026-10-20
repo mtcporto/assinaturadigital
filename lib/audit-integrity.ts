@@ -33,7 +33,12 @@ export function checkRecordIntegrity(record: DocumentRecord, events: AuditEvent[
  }
  if (record.status !== 'signed') issues.push('unexpected_status');
  const expectedType = evidence.version === 2 ? 'signed_webauthn' : 'signed';
- // Early WebAuthn releases used v1 evidence while already emitting signed_webauthn.\n // Accept that exact historical pairing, but never treat it as v2 proof.\n const signingEvents = events.filter(event =>\n  (event.event_type === expectedType || (evidence.version === 1 && event.event_type === 'signed_webauthn')) &&\n  event.actor_id === evidence.signerId\n );
+ // Early WebAuthn releases used v1 evidence while already emitting signed_webauthn.
+ // Accept that historical pairing without treating it as v2 proof.
+ const signingEvents = events.filter(event =>
+  (event.event_type === expectedType || (evidence.version === 1 && event.event_type === 'signed_webauthn')) &&
+  event.actor_id === evidence.signerId
+ );
  if (signingEvents.length !== 1 || events.filter(event => event.event_type === 'signed' || event.event_type === 'signed_webauthn').length !== 1) issues.push('missing_or_duplicate_signing_event');
  if (evidence.version === 2) {
   const proof = evidence.webauthn;
