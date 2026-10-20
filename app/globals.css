@@ -22,3 +22,17 @@
 /* Account page: editorial login hero */
 .login-page{padding:65px 0 80px}.login-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.95fr);gap:48px;align-items:center}.login-copy{min-width:0}.login-copy h1{margin-top:14px}.login-copy>.lead{font-size:16px;margin-bottom:26px}.login-panel{max-width:540px}.login-photo{min-height:550px;border-radius:8px;background:url('/hero-login.png') 59% center/cover no-repeat;box-shadow:0 20px 50px rgba(35,47,43,.09)}
 @media(max-width:760px){.login-page{padding:35px 0 55px}.login-hero{grid-template-columns:1fr;gap:25px}.login-photo{min-height:280px;order:-1;background-position:58% center}.login-copy h1{font-size:clamp(36px,9vw,52px)}}
+
+/* Invitation workflow */
+.invite-form{display:grid;gap:12px;max-width:680px;margin:26px 0}
+.invite-form label,.invite-result label{font-size:13px;font-weight:750;color:var(--ink)}
+.invite-input{display:block;width:100%;min-width:0;border:1px solid #c9cec8;background:#fcfaf7;color:var(--ink);border-radius:6px;padding:13px 14px}
+.invite-input:focus{outline:2px solid var(--forest);outline-offset:2px}
+.invite-file{display:block;width:100%;border:1px dashed #c9beb2;border-radius:6px;padding:22px;background:#fcfaf7}
+.invite-form .primary-button{justify-self:start;margin-top:8px}
+.invite-result{display:grid;gap:12px;margin:24px 0}
+.invite-result .primary-button{justify-self:start}
+.invitation-details{display:grid;gap:14px;margin:22px 0}
+.invitation-details p{margin:0;overflow-wrap:anywhere}
+.invitation-actions{display:flex;flex-wrap:wrap;gap:12px;margin:24px 0}
+@media(max-width:760px){.invite-form,.invite-result{max-width:100%}}
