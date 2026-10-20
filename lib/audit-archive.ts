@@ -13,8 +13,8 @@ function config() {
  return { bucket, client: new S3Client({region:'auto',endpoint:`https://${account}.r2.cloudflarestorage.com`,credentials:{accessKeyId,secretAccessKey}}) };
 }
 
-async function rows(): Promise<AuditSnapshotRow[]> {
- const result = await db().execute('SELECT id, document_id, event_type, actor_id, created_at, details_json FROM audit_events ORDER BY id');
+async function rows(cutoff?: string): Promise<AuditSnapshotRow[]> {
+ const result = await db().execute({sql: 'SELECT id, document_id, event_type, actor_id, created_at, details_json FROM audit_events WHERE (? IS NULL OR created_at <= ?) ORDER BY id', args: [cutoff ?? null, cutoff ?? null]});
  return result.rows.map(row => ({
   id:String(row.id),document_id:String(row.document_id),event_type:String(row.event_type),
   actor_id:String(row.actor_id),created_at:String(row.created_at),details_json:String(row.details_json)
@@ -22,8 +22,9 @@ async function rows(): Promise<AuditSnapshotRow[]> {
 }
 
 export async function archiveAuditSnapshot() {
- const records = await rows();
- const snapshot = createAuditSnapshot(records, new Date().toISOString());
+ const createdAt = new Date().toISOString();
+ const records = await rows(createdAt);
+ const snapshot = createAuditSnapshot(records, createdAt);
  const { bucket, client } = config();
  // Unique immutable-by-convention key; If-None-Match prevents overwriting the same key.
  const key = `audit/v1/${snapshot.createdAt.slice(0,10)}/${randomUUID()}.json`;
@@ -41,6 +42,6 @@ export async function checkAuditSnapshot(key: string) {
  const object=await client.send(new GetObjectCommand({Bucket:bucket,Key:key}));
  if (!object.Body) throw new Error('Empty archive');
  const snapshot=JSON.parse(await object.Body.transformToString()) as AuditSnapshot;
- const current=await rows();
+ const current=await rows(snapshot.createdAt);
  return {valid:verifyAuditSnapshot(snapshot,current),snapshot,currentEventCount:current.length};
 }
