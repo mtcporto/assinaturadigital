@@ -9,7 +9,7 @@ export default async function Home() {
  </section>
  <div className="flow-grid"><div className="panel signing-panel">
  <div className="panel-kicker">SUA PRÓXIMA ASSINATURA <span>↗</span></div>
- {session?.user?.email ? <><p className="account-line">Conectado como <strong>{session.user.email}</strong></p><SignForm/></> : <><h2>Comece por aqui</h2><p>Entre com sua conta Google para registrar a assinatura eletrônica de um documento PDF.</p><a className="button-link" href="/login">Entrar com Google →</a></>}
+ {session?.user?.email ? <><p className="account-line">Conectado como <strong>{session.user.email}</strong></p><SignForm/><p><a className="secondary-link" href="/convidar">Enviar um documento para outra pessoa assinar →</a></p></> : <><h2>Comece por aqui</h2><p>Entre com sua conta Google para registrar a assinatura eletrônica de um documento PDF.</p><a className="button-link" href="/login">Entrar com Google →</a></>}
  </div><aside className="panel steps"><span className="eyebrow">Simples por princípio</span><h2>Três passos.<br/>Um registro confiável.</h2><div className="step"><div className="step-number">01</div><div><strong>Escolha o documento</strong><span>Selecione o PDF que deseja registrar.</span></div></div><div className="step"><div className="step-number">02</div><div><strong>Confirme sua intenção</strong><span>Autorize o registro das evidências da assinatura.</span></div></div><div className="step"><div className="step-number">03</div><div><strong>Verifique a integridade</strong><span>Consulte o identificador e compare o SHA-256.</span></div></div><div className="steps-foot"><span className="tiny-seal">✳</span><p>O original é preservado. O PDF com comprovante visual está em desenvolvimento.</p></div></aside></div>
  </main>;
 }
