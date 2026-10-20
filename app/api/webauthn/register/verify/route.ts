@@ -24,10 +24,10 @@ export async function POST(request: Request) {
    response: payload.response, expectedChallenge, expectedOrigin: rp.origin, expectedRPID: rp.rpID, requireUserVerification: true
   });
   if (!result.verified || !result.registrationInfo) return NextResponse.json({ error: 'verification_failed' }, { status: 400 });
-  const { credential, credentialDeviceType, credentialBackedUp } = result.registrationInfo;
+  const { credentialID, credentialPublicKey, counter, credentialDeviceType, credentialBackedUp } = result.registrationInfo;
   await db().execute({
    sql: 'INSERT INTO webauthn_credentials (credential_id, signer_id, public_key, counter, transports_json, device_type, backed_up, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-   args: [credential.id, signer.id, Buffer.from(credential.publicKey), credential.counter, JSON.stringify(credential.transports ?? []), credentialDeviceType, credentialBackedUp ? 1 : 0, new Date().toISOString()]
+   args: [Buffer.from(credentialID).toString('base64url'), signer.id, Buffer.from(credentialPublicKey), counter, JSON.stringify(payload.response.response?.transports ?? []), credentialDeviceType, credentialBackedUp ? 1 : 0, new Date().toISOString()]
   });
   return NextResponse.json({ registered: true }, { headers: { 'Cache-Control': 'no-store' } });
  } catch { return NextResponse.json({ error: 'verification_failed' }, { status: 400 }); }
