@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { randomUUID } from 'node:crypto';
 import { generateAuthenticationOptions } from '@simplewebauthn/server';
 import { currentSigner, relyingParty } from '../../../../../lib/webauthn';
 import { db } from '../../../../../lib/db';
@@ -23,8 +22,8 @@ export async function POST(request: Request) {
    rpID: rp.rpID, userVerification: 'required',
    allowCredentials: credentials.rows.map(row => ({ id: Buffer.from(String(row.credential_id), 'base64url'), type: 'public-key' as const, transports: JSON.parse(String(row.transports_json)) }))
   });
-  const challengeId = randomUUID();
-  await client.execute({ sql: "INSERT INTO webauthn_challenges (id, signer_id, challenge, purpose, document_sha256, consent_sha256, expires_at, created_at) VALUES (?, ?, ?, 'sign', ?, ?, ?, ?)",
+  const challengeId = payload.intentId;
+  await client.execute({ sql: "INSERT INTO webauthn_challenges (id, signer_id, challenge, purpose, document_sha256, consent_sha256, expires_at, created_at) VALUES (?, ?, ?, 'sign', ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET challenge = excluded.challenge, expires_at = excluded.expires_at, consumed_at = NULL WHERE webauthn_challenges.signer_id = excluded.signer_id AND webauthn_challenges.consumed_at IS NULL",
    args: [challengeId, signer.id, options.challenge, String(intent.rows[0].document_sha256), String(intent.rows[0].consent_sha256), new Date(Math.min(now.getTime()+120000, Date.parse(String(intent.rows[0].expires_at ?? new Date(now.getTime()+120000).toISOString())))).toISOString(), now.toISOString()] });
   return NextResponse.json({ challengeId, options, intentId: payload.intentId }, { headers: { 'Cache-Control': 'no-store' } });
  } catch { return NextResponse.json({ error: 'challenge_unavailable' }, { status: 503 }); }
