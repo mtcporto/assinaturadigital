@@ -116,7 +116,7 @@ export default async function InvitePage({searchParams}:{searchParams:Promise<{m
           <p><strong>Situação: {statusLabel(invitation)}</strong>{invitation.signedAt?` · Assinado em ${dateLabel(invitation.signedAt)}`:''}</p>
          </div>
          <div className="actions">{invitation.status==='signed'&&invitation.documentId?
-          <><a className="secondary-link" href={`/api/documents/${invitation.documentId}`}>Baixar PDF assinado</a><a className="secondary-link" href={`/verify/${invitation.documentId}`}>Verificar assinatura</a></>:null}{invitation.status==='pending'||invitation.status==='expired'?<RenewInvite id={invitation.id} expired={invitation.status==='expired'||Date.parse(invitation.expiresAt)<=Date.now()}/>:null}{invitation.status==='pending'&&Date.parse(invitation.expiresAt)>Date.now()?<CancelInvite id={invitation.id}/>:null}</div>
+          <><a className="secondary-link" href={`/api/documents/${invitation.documentId}`}>Baixar PDF assinado</a><a className="secondary-link" href={`/verify/${invitation.documentId}`}>Verificar assinatura</a><a className="secondary-link" href={`/api/documents/${invitation.documentId}/receipt/pdf`}>Comprovante PDF</a><a className="secondary-link" href={`/api/documents/${invitation.documentId}/receipt`}>Comprovante JSON</a></>:null}{invitation.status==='pending'||invitation.status==='expired'?<RenewInvite id={invitation.id} expired={invitation.status==='expired'||Date.parse(invitation.expiresAt)<=Date.now()}/>:null}{invitation.status==='pending'&&Date.parse(invitation.expiresAt)>Date.now()?<CancelInvite id={invitation.id}/>:null}</div>
         </article>)}
        </div>
        {totalPages>1?<nav className="actions" aria-label="Páginas dos convites" style={{marginTop:'1.5rem'}}>
