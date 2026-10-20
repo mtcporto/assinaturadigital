@@ -1,9 +1,7 @@
 'use client';
 import {useState} from 'react';
-import {useRouter} from 'next/navigation';
 
 export function RenewInvite({id,expired}:{id:string;expired:boolean}){
- const router=useRouter();
  const [busy,setBusy]=useState(false);
  const [url,setUrl]=useState('');
  const [error,setError]=useState('');
@@ -16,7 +14,6 @@ export function RenewInvite({id,expired}:{id:string;expired:boolean}){
    const data=await response.json();
    if(!response.ok)throw new Error(data.error||'Falha ao gerar link');
    setUrl(data.invitationUrl);
-   router.refresh();
   }catch(e){setError(e instanceof Error?e.message:'Falha de conexão');}finally{setBusy(false);}
  }
  async function copy(){
