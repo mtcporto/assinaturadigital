@@ -68,7 +68,6 @@ export default async function InvitePage() {
        <div className="actions">
         {invitation.status === 'signed' && invitation.documentId ? <>
          <a className="secondary-link" href={`/verify/${invitation.documentId}`}>Verificar assinatura</a>
-         <a className="secondary-link" href={`/api/documents/${invitation.documentId}/receipt/pdf`}>Comprovante PDF</a>
         </> : null}
        </div>
       </article>)}
