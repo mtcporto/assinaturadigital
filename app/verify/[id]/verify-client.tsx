@@ -87,7 +87,7 @@ export function VerifyClient({ id }: { id: string }) {
         {record?.valid ? <p style={{ fontWeight: 700, color: matches ? '#166534' : '#b91c1c' }}>{matches ? '✓ PDF corresponde exatamente ao registro.' : '✗ PDF diferente do documento registrado.'}</p> : <p>Não é possível confirmar correspondência sem um registro válido.</p>}
       </div>}
     </div>
-    <p style={{ marginTop: 24 }}><a href={'/api/verify/' + encodeURIComponent(id)}>Consultar resposta JSON</a> · <a href="/">Voltar ao início</a></p>
+    <div className="actions" style={{marginTop:24,flexWrap:'wrap'}}><a className="button-link" href="/documentos">Meus documentos →</a><a className="secondary-link" href="/">Assinar outro PDF</a><a className="secondary-link" href="/verificar">Verificar outro registro</a></div><p className="notice"><a href={'/api/verify/' + encodeURIComponent(id)}>Consultar resposta JSON</a></p>
     <p className="notice">A validação confirma a integridade das evidências e, quando o PDF é comparado, a correspondência dos bytes. Não comprova identidade civil nem equivale a assinatura qualificada ICP-Brasil.</p>
   </section>;
 }
