@@ -23,9 +23,9 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
     });
     const integrity = checkRecordIntegrity(record as unknown as DocumentRecord, eventResult.rows as unknown as AuditEvent[]);
     const valid = integrity.valid;
-    const evidence = valid ? JSON.parse(String(record.evidence_json)) as { documentSha256: string; createdAt: string } : null;
+    const evidence = valid ? JSON.parse(String(record.evidence_json)) as { documentSha256: string; createdAt: string; version: number } : null;
     return NextResponse.json(
-      { valid, reason: valid ? 'record_seal_valid' : 'invalid_evidence', documentSha256: valid ? evidence?.documentSha256 : undefined, createdAt: valid ? evidence?.createdAt : undefined,
+      { valid, reason: valid ? 'record_seal_valid' : 'invalid_evidence', documentSha256: valid ? evidence?.documentSha256 : undefined, createdAt: valid ? evidence?.createdAt : undefined, authentication: valid ? (evidence?.version === 2 ? 'webauthn-passkey' : 'legacy') : undefined,
         note: valid ? 'Registro autenticado. Para validar um PDF específico, compare seu SHA-256 ao documentSha256 retornado.' : undefined },
       { status: valid ? 200 : 422, headers: { 'Cache-Control': 'no-store' } },
     );
