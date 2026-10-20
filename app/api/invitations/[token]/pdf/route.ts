@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { db } from '../../../../lib/db';
-import { sha256 } from '../../../../lib/evidence';
-import { getPdf } from '../../../../lib/r2';
+import { db } from '../../../../../lib/db';
+import { sha256 } from '../../../../../lib/evidence';
+import { getPdf } from '../../../../../lib/r2';
 export const runtime='nodejs';
 export async function GET(_request:Request,{params}:{params:Promise<{token:string}>}){
  const {token}=await params;
