@@ -34,7 +34,7 @@ export async function POST(request: Request) {
    expectedOrigin: rp.origin, expectedRPID: rp.rpID, requireUserVerification:true,
    authenticator: {
     credentialID: Buffer.from(String(credential.credential_id),'base64url'),
-    credentialPublicKey: new Uint8Array(credential.public_key as Uint8Array),
+    credentialPublicKey: new Uint8Array(credential.public_key as ArrayBuffer),
     counter: Number(credential.counter),
     transports: JSON.parse(String(credential.transports_json))
    }
