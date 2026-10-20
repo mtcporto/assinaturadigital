@@ -18,12 +18,17 @@ const FILTERS:{key:Filter;label:string}[]=[{key:'todos',label:'Todos'},{key:'pen
 function condition(filter:Filter){const now="datetime('now')";switch(filter){case 'pendentes':return `r.status='pending' AND r.expires_at > strftime('%Y-%m-%dT%H:%M:%fZ',${now})`;case 'assinados':return "r.status='signed' AND r.document_id IS NOT NULL";case 'expirados':return "(r.status='expired' OR (r.status='pending' AND r.expires_at <= strftime('%Y-%m-%dT%H:%M:%fZ',datetime('now'))))";case 'cancelados':return "r.status='cancelled'";default:return '1=1';}}
 
 const monthName = (key:string) => new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(key+'-01T12:00:00Z'));
+const monthTitle = (key:string) => { const name=monthName(key);return name.charAt(0).toUpperCase()+name.slice(1); };
 
 function statusLabel(row: Invitation) {
  if (row.status === 'signed' && row.documentId) return 'Assinado';
  if (row.status === 'cancelled') return 'Cancelado';
  if (row.status === 'expired' || (row.status === 'pending' && Date.parse(row.expiresAt) <= Date.now())) return 'Expirado';
  return 'Aguardando assinatura';
+}
+function statusClass(row: Invitation) {
+ const label=statusLabel(row);
+ return label==='Assinado'?'signed':label==='Cancelado'?'cancelled':label==='Expirado'?'expired':'pending';
 }
 function dateLabel(value: string) {
  const date = new Date(value);
@@ -104,7 +109,7 @@ export default async function InvitePage({searchParams}:{searchParams:Promise<{m
       : months.length===0 ? <><h2>Nenhum convite enviado ainda</h2><p>Crie o primeiro convite no formulário acima.</p></>
       : <>
        <span className="eyebrow">Histórico de convites</span>
-       <h2 style={{textTransform:'capitalize'}}>{selected?monthName(selected):'Convites'}</h2>
+       <h2>{selected?monthTitle(selected):'Convites'}</h2>
        <p className="account-line">{selectedTotal} {selectedTotal===1?'convite':'convites'} neste período · Página {currentPage} de {totalPages}</p>
        {invitations.length===0?<p>Nenhum convite com esta situação no período.</p>:null}
        <div className="document-list">
@@ -113,10 +118,10 @@ export default async function InvitePage({searchParams}:{searchParams:Promise<{m
           <strong>{invitation.fileName}</strong>
           <p className="account-line">Destinatário: {invitation.recipientEmail}</p>
           <p className="account-line">Criado em {dateLabel(invitation.createdAt)} · Prazo: {dateLabel(invitation.expiresAt)}</p>
-          <p><strong>Situação: {statusLabel(invitation)}</strong>{invitation.signedAt?` · Assinado em ${dateLabel(invitation.signedAt)}`:''}</p>
+          <p className="invitation-status-line"><span className={`invitation-status invitation-status--${statusClass(invitation)}`}>{statusLabel(invitation)}</span>{invitation.signedAt?<span className="account-line">Assinado em {dateLabel(invitation.signedAt)}</span>:null}</p>
          </div>
-         <div className="actions">{invitation.status==='signed'&&invitation.documentId?
-          <><a className="secondary-link" href={`/api/documents/${invitation.documentId}`}>Baixar PDF assinado</a><a className="secondary-link" href={`/verify/${invitation.documentId}`}>Verificar assinatura</a><a className="secondary-link" href={`/api/documents/${invitation.documentId}/receipt/pdf`}>Comprovante PDF</a><a className="secondary-link" href={`/api/documents/${invitation.documentId}/receipt`}>Comprovante JSON</a></>:null}{invitation.status==='pending'||invitation.status==='expired'?<RenewInvite id={invitation.id} expired={invitation.status==='expired'||Date.parse(invitation.expiresAt)<=Date.now()}/>:null}{invitation.status==='pending'&&Date.parse(invitation.expiresAt)>Date.now()?<CancelInvite id={invitation.id}/>:null}</div>
+         <div className="actions invitation-item-actions">{invitation.status==='signed'&&invitation.documentId?
+          <><a className="secondary-link" href={`/api/documents/${invitation.documentId}`}>Baixar documento</a><a className="secondary-link" href={`/verify/${invitation.documentId}`}>Verificar assinatura</a><details className="invitation-receipts"><summary>Comprovantes</summary><div className="invitation-receipts-links"><a href={`/api/documents/${invitation.documentId}/receipt/pdf`}>Baixar PDF</a><a href={`/api/documents/${invitation.documentId}/receipt`}>Baixar JSON</a></div></details></>:null}{invitation.status==='pending'||invitation.status==='expired'?<RenewInvite id={invitation.id} expired={invitation.status==='expired'||Date.parse(invitation.expiresAt)<=Date.now()}/>:null}{invitation.status==='pending'&&Date.parse(invitation.expiresAt)>Date.now()?<CancelInvite id={invitation.id}/>:null}</div>
         </article>)}
        </div>
        {totalPages>1?<nav className="actions" aria-label="Páginas dos convites" style={{marginTop:'1.5rem'}}>
