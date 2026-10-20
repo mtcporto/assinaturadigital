@@ -15,7 +15,7 @@ export async function POST(request: Request) {
  if (typeof payload.intentId !== 'string' || !/^[0-9a-f-]{36}$/i.test(payload.intentId)) return NextResponse.json({ error: 'invalid_intent' }, { status: 400 });
  try {
   const client = db(), now = new Date();
-  const intent = await client.execute({ sql: "SELECT document_sha256, consent_sha256 FROM signing_intents WHERE id = ? AND signer_id = ? AND status = 'pending' AND consumed_at IS NULL AND expires_at > ? LIMIT 1", args: [payload.intentId, signer.id, now.toISOString()] });
+  const intent = await client.execute({ sql: "SELECT document_sha256, consent_sha256, expires_at FROM signing_intents WHERE id = ? AND signer_id = ? AND status = 'pending' AND consumed_at IS NULL AND expires_at > ? LIMIT 1", args: [payload.intentId, signer.id, now.toISOString()] });
   if (!intent.rows[0]) return NextResponse.json({ error: 'intent_expired' }, { status: 409 });
   const credentials = await client.execute({ sql: 'SELECT credential_id, transports_json FROM webauthn_credentials WHERE signer_id = ?', args: [signer.id] });
   if (!credentials.rows.length) return NextResponse.json({ error: 'passkey_required' }, { status: 409 });
