@@ -10,7 +10,7 @@ export function PasskeyRegistration() {
    const optionsResponse = await fetch('/api/webauthn/register/options', { method: 'POST' });
    const data = await optionsResponse.json();
    if (!optionsResponse.ok) throw new Error(data.error);
-   const response = await startRegistration({ optionsJSON: data.options });
+   const response = await startRegistration(data.options);
    const verificationResponse = await fetch('/api/webauthn/register/verify', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ challengeId: data.challengeId, response })
