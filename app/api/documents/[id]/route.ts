@@ -13,9 +13,7 @@ export async function GET(_request:NextRequest,context:{params:Promise<{id:strin
   const record=result.rows[0]; if(!record) return NextResponse.json({error:'not_found'},{status:404});
   const pdf=await getPdf(String(record.object_key));
   if(sha256(pdf)!==String(record.sha256)) return NextResponse.json({error:'integrity_failure'},{status:422});
-  const rawName=typeof record.file_name==='string'?record.file_name:'document-'+id+'.pdf';
-  const safeName=rawName.replace(/[^a-zA-Z0-9._ -]/g,'_').replace(/[\\r\\n"]/g,'_').slice(0,120);
-  const fileName=safeName.toLowerCase().endsWith('.pdf')?safeName:safeName+'.pdf';
+  const fileName='arquivo_assinado.pdf';
   return new NextResponse(Buffer.from(pdf),{headers:{'Content-Type':'application/pdf','Content-Disposition':`attachment; filename="${fileName}"`,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
  } catch {return NextResponse.json({error:'document_unavailable'},{status:503});}
 }
