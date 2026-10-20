@@ -43,6 +43,16 @@ export async function POST(request: Request) {
   const pdf = await getPdf(String(intent.object_key));
   if (sha256(pdf) !== intent.document_sha256 || sha256(new TextEncoder().encode(consent)) !== intent.consent_sha256) return NextResponse.json({error:'integrity_failed'}, {status:422});
   const evidence = makeEvidence({documentSha256:String(intent.document_sha256),signerId:signer.id,signerEmail:signer.email,consentText:consent,consentAt:now});
+  // Seal the assertion transcript together with the PDF and consent.
+  evidence.version = 2;
+  evidence.webauthn = {
+   intentId: body.intentId,
+   credentialId: String(credential.credential_id),
+   challenge: String(challenge.challenge),
+   assertionSha256: sha256(new TextEncoder().encode(JSON.stringify(body.response))),
+   consentSha256: String(intent.consent_sha256),
+   rpId: rp.rpID, origin: rp.origin, counter: verified.authenticationInfo.newCounter
+  };
   const batch = await client.batch([
    {sql:"UPDATE signing_intents SET status = 'completed', consumed_at = ?, document_id = ? WHERE id = ? AND signer_id = ? AND status = 'pending' AND consumed_at IS NULL AND expires_at > ? RETURNING id",args:[now,evidence.id,body.intentId,signer.id,now]},
    {sql:"INSERT INTO documents (id,sha256,object_key,signer_id,signer_email,consent_text,consent_at,created_at,evidence_json,evidence_mac,status) SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM signing_intents WHERE id = ? AND document_id = ? AND status = 'completed')",args:[evidence.id,evidence.documentSha256,String(intent.object_key),signer.id,signer.email,consent,now,evidence.createdAt,JSON.stringify(evidence),sealEvidence(evidence),'signed',body.intentId,evidence.id]},
