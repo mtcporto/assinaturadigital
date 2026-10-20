@@ -1,5 +1,5 @@
-import { db } from '../../../lib/db';
-import { sha256 } from '../../../lib/evidence';
+import { db } from '../../../../lib/db';
+import { sha256 } from '../../../../lib/evidence';
 import { NextResponse } from 'next/server';
 
 export const runtime='nodejs';
