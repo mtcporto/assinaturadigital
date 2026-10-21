@@ -13,10 +13,12 @@ export async function GET(_request:NextRequest,context:{params:Promise<{id:strin
   const record=result.rows[0]; if(!record) return NextResponse.json({error:'not_found'},{status:404});
   const pdf=await getPdf(String(record.object_key));
   if(sha256(pdf)!==String(record.sha256)) return NextResponse.json({error:'integrity_failure'},{status:422});
-  const rawName = typeof record.file_name === 'string' ? record.file_name : typeof record.envelope_file_name === 'string' ? record.envelope_file_name : 'documento.pdf';
-  const baseName = rawName.replace(/\\\\/g, '/').split('/').pop() || 'documento.pdf';
-  const stem = baseName.replace(/\\.pdf$/i, '').replace(/[\\x00-\\x1f\\x7f"<>:|?*\\/]/g, '_').replace(/^\\.+/, '').trim().slice(0, 100) || 'documento';
-  const fileName = stem + '_assinado.pdf';
-  return new NextResponse(Buffer.from(pdf),{headers:{'Content-Type':'application/pdf','Content-Disposition':`attachment; filename="${fileName}"`,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
+  const rawName = typeof record.envelope_file_name === 'string' ? record.envelope_file_name : typeof record.file_name === 'string' ? record.file_name : 'documento.pdf';
+  const baseName = rawName.replace(/\\/g, '/').split('/').pop() || 'documento.pdf';
+  const stem = baseName.replace(/\.pdf$/i, '').replace(/[\x00-\x1f\x7f"<>:|?*\\/]/g, '_').replace(/^\.+/, '').trim().slice(0, 120) || 'documento';
+  const fileName = stem + '.pdf';
+  const asciiFallback = fileName.normalize('NFKD').replace(/[^\x20-\x7E]/g, '').replace(/["\\]/g, '_') || 'documento.pdf';
+  const disposition = 'attachment; filename="' + asciiFallback + '"; filename*=UTF-8\'\'' + encodeURIComponent(fileName);
+  return new NextResponse(Buffer.from(pdf),{headers:{'Content-Type':'application/pdf','Content-Disposition':disposition,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
  } catch {return NextResponse.json({error:'document_unavailable'},{status:503});}
 }
