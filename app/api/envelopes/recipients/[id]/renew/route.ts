@@ -33,6 +33,9 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   const recipientEmail=String(result.rows[0].email);
   const file=await db().execute({sql:'SELECT e.file_name FROM signing_envelopes e JOIN envelope_recipients r ON r.envelope_id=e.id WHERE r.id=? AND e.owner_id=? LIMIT 1',args:[id,signer.id]});
   const delivery=await sendInvitationEmail({to:recipientEmail,url:invitationUrl,fileName:String(file.rows[0]?.file_name??'Documento PDF'),expiresAt});
+  await db().execute({sql:`INSERT INTO invitation_email_deliveries (recipient_id,resend_email_id,status,updated_at) VALUES (?,?,?,?)
+   ON CONFLICT(recipient_id) DO UPDATE SET resend_email_id=excluded.resend_email_id,status=excluded.status,updated_at=excluded.updated_at`,
+   args:[id,delivery.id??null,delivery.status==='sent'?'accepted':'failed',new Date().toISOString()]}).catch(error=>console.error('email_status_save_failed',error instanceof Error?error.message:'unknown'));
   return NextResponse.json({invitationUrl,expiresAt,recipientEmail,delivery:delivery.status},{headers:{'Cache-Control':'private, no-store','Referrer-Policy':'no-referrer'}});
  }catch(error){console.error('invitation_renew_failed',error);return NextResponse.json({error:'renew_unavailable'},{status:503});}
 }
