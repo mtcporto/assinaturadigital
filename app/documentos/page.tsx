@@ -25,9 +25,10 @@ export default async function DocumentsPage({searchParams}:{searchParams:Promise
    currentPage=Math.min(Math.max(1,requested),Math.max(1,Math.ceil(total/PAGE_SIZE)));
    const result=await client.execute({sql:`SELECT d.id,d.created_at,d.status,
      (SELECT json_extract(a.details_json,'$.fileName') FROM audit_events a
-      WHERE a.document_id=d.id AND a.event_type IN ('signed','signed_webauthn') ORDER BY a.created_at LIMIT 1) AS file_name
+      WHERE a.document_id=d.id AND a.event_type IN ('signed','signed_webauthn') ORDER BY a.created_at LIMIT 1) AS file_name,
+     (SELECT e.file_name FROM envelope_recipients r JOIN signing_envelopes e ON e.id=r.envelope_id WHERE r.document_id=d.id LIMIT 1) AS envelope_file_name
      FROM documents d WHERE d.signer_id=? AND substr(d.created_at,1,7)=? ORDER BY d.created_at DESC,d.id DESC LIMIT ? OFFSET ?`,args:[session.user.id,active,PAGE_SIZE,(currentPage-1)*PAGE_SIZE]});
-   docs=result.rows.map(r=>({id:String(r.id),fileName:typeof r.file_name==='string'?r.file_name:'Documento PDF',createdAt:String(r.created_at),status:String(r.status)}));
+   docs=result.rows.map(r=>({id:String(r.id),fileName:typeof r.file_name==='string'?r.file_name:typeof r.envelope_file_name==='string'?r.envelope_file_name:'Documento PDF',createdAt:String(r.created_at),status:String(r.status)}));
   }
  } catch {error=true;}
  const selected=months.some(m=>m.key===mes)?mes:months[0]?.key;
