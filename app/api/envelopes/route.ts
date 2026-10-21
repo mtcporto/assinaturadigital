@@ -42,6 +42,7 @@ export async function POST(request: Request) {
   }catch(error){await deletePdf(objectKey).catch(()=>{});throw error;}
   const invitationUrl=`${origin}/convite/${token}`;
   const delivery=await sendInvitationEmail({to:email,url:invitationUrl,fileName:file.name.slice(0,255),expiresAt:expires.toISOString()});
+  await client.execute({sql:'INSERT INTO invitation_email_deliveries (recipient_id,resend_email_id,status,updated_at) VALUES (?,?,?,?)',args:[recipientId,delivery.id??null,delivery.status==='sent'?'accepted':'failed',new Date().toISOString()]}).catch(error=>console.error('email_status_save_failed',error instanceof Error?error.message:'unknown'));
   return NextResponse.json({envelopeId:id,recipientEmail:email,invitationUrl,expiresAt:expires.toISOString(),status:'pending',delivery:delivery.status},{status:201,headers:{'Cache-Control':'private, no-store','Referrer-Policy':'no-referrer'}});
  }catch{return NextResponse.json({error:'envelope_creation_failed'},{status:503});}
 }
