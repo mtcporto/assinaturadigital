@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { currentSigner, relyingParty } from '../../../../../../lib/webauthn';
 import { db } from '../../../../../../lib/db';
 import { sha256 } from '../../../../../../lib/evidence';
+import { sendInvitationEmail } from '../../../../../../lib/resend';
 
 export const runtime='nodejs';
 
@@ -28,6 +29,10 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
    args:[tokenHash,expiresAt,id,signer.id]
   });
   if(result.rows.length!==1)return NextResponse.json({error:'not_eligible_or_not_owned'},{status:409});
-  return NextResponse.json({invitationUrl:origin+'/convite/'+token,expiresAt,recipientEmail:String(result.rows[0].email),delivery:'manual'},{headers:{'Cache-Control':'private, no-store','Referrer-Policy':'no-referrer'}});
+  const invitationUrl=origin+'/convite/'+token;
+  const recipientEmail=String(result.rows[0].email);
+  const file=await db().execute({sql:'SELECT e.file_name FROM signing_envelopes e JOIN envelope_recipients r ON r.envelope_id=e.id WHERE r.id=? AND e.owner_id=? LIMIT 1',args:[id,signer.id]});
+  const delivery=await sendInvitationEmail({to:recipientEmail,url:invitationUrl,fileName:String(file.rows[0]?.file_name??'Documento PDF'),expiresAt});
+  return NextResponse.json({invitationUrl,expiresAt,recipientEmail,delivery:delivery.status},{headers:{'Cache-Control':'private, no-store','Referrer-Policy':'no-referrer'}});
  }catch(error){console.error('invitation_renew_failed',error);return NextResponse.json({error:'renew_unavailable'},{status:503});}
 }
