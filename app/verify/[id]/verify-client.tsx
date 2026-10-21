@@ -72,7 +72,7 @@ export function VerifyClient({ id }: { id: string }) {
         <h2 style={{ color: '#166534' }}>✓ Registro de evidências válido</h2>
         <p>O selo criptográfico e os eventos de auditoria do registro foram verificados. Isso ainda não confirma que o PDF recebido é o mesmo documento.</p>
         <p><strong>Confirmação da assinatura:</strong> {record.authentication === 'webauthn-passkey' ? 'Passkey (WebAuthn)' : record.authentication === 'legacy' ? 'Registro eletrônico legado' : 'Não informada'}</p>
-        {record.createdAt && <p><strong>Registrado em:</strong> {new Date(record.createdAt).toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'medium' })}</p>}
+        {record.createdAt && <p><strong>Registrado em:</strong> {new Date(record.createdAt).toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'medium', timeZone: 'America/Sao_Paulo' })}</p>}
         <p><strong>SHA-256 do PDF original:</strong></p>
         <p style={hashStyle}>{record.documentSha256}</p>
       </> : <><h2 style={{ color: '#b91c1c' }}>Registro não validado</h2><p role="alert">{record?.reason === 'not_found' ? 'Registro não encontrado.' : 'O registro não passou na verificação de integridade ou o identificador é inválido.'}</p></>}
@@ -90,7 +90,7 @@ export function VerifyClient({ id }: { id: string }) {
         {record?.valid ? <p style={{ fontWeight: 700, color: matches ? '#166534' : '#b91c1c' }}>{matches ? '✓ Integridade do PDF confirmada: os bytes correspondem ao documento registrado.' : '✗ Integridade do PDF não confirmada: este arquivo é diferente do documento registrado.'}</p> : <p>Não é possível confirmar correspondência sem um registro válido.</p>}
       </div>}
     </div>
-    <div className="actions" style={{marginTop:24,flexWrap:'wrap'}}><a className="button-link" href="/documentos">Meus documentos →</a><a className="secondary-link" href="/">Assinar outro PDF</a><a className="secondary-link" href="/verificar">Verificar outro registro</a></div><p className="notice"><a href={'/api/verify/' + encodeURIComponent(id)}>Consultar resposta JSON</a></p>
+    <div className="actions" style={{marginTop:24,flexWrap:'wrap'}}><a className="button-link" href={'/api/documents/'+encodeURIComponent(id)}>Baixar PDF (acesso autorizado)</a><a className="secondary-link" href="/documentos">Meus documentos →</a><a className="secondary-link" href="/">Assinar outro PDF</a><a className="secondary-link" href="/verificar">Verificar outro registro</a></div><p className="notice"><a href={'/api/verify/' + encodeURIComponent(id)}>Consultar resposta JSON</a></p>
     <p className="notice">A validação confirma a integridade das evidências e, quando o PDF é comparado, a correspondência dos bytes. Não comprova identidade civil nem equivale a assinatura qualificada ICP-Brasil.</p>
   </section>;
 }
