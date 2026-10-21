@@ -8,7 +8,7 @@ export function InviteForm(){
    const response=await fetch('/api/envelopes',{method:'POST',body:new FormData(e.currentTarget)});
    const data=await response.json();
    if(!response.ok){setMessage('Não foi possível criar o convite ('+(data.error??response.status)+'). Confira se a migração 003 foi aplicada.');return;}
-   setUrl(data.invitationUrl);setMessage(data.delivery==='sent'?'Convite criado e aceito pelo Resend para envio por e-mail. O link expira em 7 dias.':data.delivery==='not_configured'?'Convite criado, mas o envio por e-mail não está configurado. Copie o link abaixo.':'Convite criado, mas não foi possível enviar o e-mail. Copie o link abaixo.');
+   setUrl(data.invitationUrl);setMessage(data.delivery==='sent'?'Convite criado! O Selo enviou o convite por e-mail. O link expira em 7 dias.':data.delivery==='not_configured'?'Convite criado, mas o envio por e-mail não está configurado. Copie o link abaixo.':'Convite criado, mas não foi possível enviar o e-mail. Copie o link abaixo.');
   }catch{setMessage('Falha de conexão ao criar convite.');}finally{setBusy(false);}
  }
  return <section className="panel signing-panel"><h2>Convidar para assinar</h2><p>Crie um convite individual para outra pessoa. O documento fica armazenado de forma privada.</p>
