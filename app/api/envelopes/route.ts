@@ -4,6 +4,7 @@ import { currentSigner, relyingParty } from '../../../lib/webauthn';
 import { db } from '../../../lib/db';
 import { sha256 } from '../../../lib/evidence';
 import { putPdf, deletePdf } from '../../../lib/r2';
+import { sendInvitationEmail } from '../../../lib/resend';
 
 export const runtime = 'nodejs';
 
@@ -39,6 +40,8 @@ export async function POST(request: Request) {
     {sql:'INSERT INTO envelope_recipients (id,envelope_id,email,token_sha256,created_at,expires_at) VALUES (?,?,?,?,?,?)',args:[recipientId,id,email,sha256(new TextEncoder().encode(token)),now.toISOString(),expires.toISOString()]}
    ],'write');
   }catch(error){await deletePdf(objectKey).catch(()=>{});throw error;}
-  return NextResponse.json({envelopeId:id,recipientEmail:email,invitationUrl:`${origin}/convite/${token}`,expiresAt:expires.toISOString(),status:'pending',delivery:'manual'},{status:201,headers:{'Cache-Control':'no-store'}});
+  const invitationUrl=`${origin}/convite/${token}`;
+  const delivery=await sendInvitationEmail({to:email,url:invitationUrl,fileName:file.name.slice(0,255),expiresAt:expires.toISOString()});
+  return NextResponse.json({envelopeId:id,recipientEmail:email,invitationUrl,expiresAt:expires.toISOString(),status:'pending',delivery:delivery.status},{status:201,headers:{'Cache-Control':'private, no-store','Referrer-Policy':'no-referrer'}});
  }catch{return NextResponse.json({error:'envelope_creation_failed'},{status:503});}
 }
