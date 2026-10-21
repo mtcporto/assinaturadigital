@@ -4,13 +4,14 @@ import { db } from '../../lib/db';
 import { InviteForm } from './invite-form';
 import { CancelInvite } from './cancel-invite';
 import { RenewInvite } from './renew-invite';
+import { dateTimeBR } from '../../lib/datetime';
 
 export const dynamic = 'force-dynamic';
 const PAGE_SIZE = 25;
 
 type Invitation = {
  id: string; fileName: string; recipientEmail: string; status: string;
- createdAt: string; expiresAt: string; signedAt: string | null; documentId: string | null;
+ createdAt: string; expiresAt: string; signedAt: string | null; documentId: string | null; emailStatus:string | null;
 };
 type Month = {key:string; total:number};
 type Filter='todos'|'pendentes'|'assinados'|'expirados'|'cancelados';
@@ -30,10 +31,7 @@ function statusClass(row: Invitation) {
  const label=statusLabel(row);
  return label==='Assinado'?'signed':label==='Cancelado'?'cancelled':label==='Expirado'?'expired':'pending';
 }
-function dateLabel(value: string) {
- const date = new Date(value);
- return Number.isNaN(date.getTime()) ? value : date.toLocaleString('pt-BR', {dateStyle:'short',timeStyle:'short',timeZone:'America/Sao_Paulo'});
-}
+const dateLabel=dateTimeBR;
 
 export default async function InvitePage({searchParams}:{searchParams:Promise<{mes?:string;pagina?:string;status?:string}>}) {
  const session = await auth();
@@ -62,8 +60,9 @@ export default async function InvitePage({searchParams}:{searchParams:Promise<{m
    const requestedPage = pagina && /^\d{1,6}$/.test(pagina) ? Number(pagina) : 1;
    currentPage = Math.min(Math.max(1,requestedPage),Math.max(1,Math.ceil(total/PAGE_SIZE)));
    const result = await client.execute({
-    sql: `SELECT r.id, e.file_name, r.email, r.status, r.created_at, r.expires_at, r.signed_at, r.document_id
+    sql: `SELECT r.id, e.file_name, r.email, r.status, r.created_at, r.expires_at, r.signed_at, r.document_id, m.status AS email_status
           FROM envelope_recipients r JOIN signing_envelopes e ON e.id=r.envelope_id
+          LEFT JOIN invitation_email_deliveries m ON m.recipient_id=r.id
           WHERE e.owner_id=? AND substr(r.created_at,1,7)=? AND ${where}
           ORDER BY r.created_at DESC, r.id DESC LIMIT ? OFFSET ?`,
     args: [session.user.id,selected,PAGE_SIZE,(currentPage-1)*PAGE_SIZE]
@@ -72,7 +71,8 @@ export default async function InvitePage({searchParams}:{searchParams:Promise<{m
     id:String(row.id),fileName:String(row.file_name),recipientEmail:String(row.email),
     status:String(row.status),createdAt:String(row.created_at),expiresAt:String(row.expires_at),
     signedAt:row.signed_at==null?null:String(row.signed_at),
-    documentId:row.document_id==null?null:String(row.document_id)
+    documentId:row.document_id==null?null:String(row.document_id),
+    emailStatus:row.email_status==null?null:String(row.email_status)
    }));
   }
  } catch { error = true; }
@@ -118,6 +118,7 @@ export default async function InvitePage({searchParams}:{searchParams:Promise<{m
           <strong>{invitation.fileName}</strong>
           <p className="account-line">Destinatário: {invitation.recipientEmail}</p>
           <p className="account-line">Criado em {dateLabel(invitation.createdAt)} · Prazo: {dateLabel(invitation.expiresAt)}</p>
+          <p className="account-line">E-mail: {invitation.emailStatus==='delivered'?'Entregue':invitation.emailStatus==='accepted'?'Aceito para envio':invitation.emailStatus==='bounced'?'Devolvido':invitation.emailStatus==='complained'?'Marcado como spam':invitation.emailStatus==='delayed'?'Entrega atrasada':invitation.emailStatus==='failed'?'Falha no envio':'Sem registro de envio'}</p>
           <p className="invitation-status-line"><span className={`invitation-status invitation-status--${statusClass(invitation)}`}>{statusLabel(invitation)}</span>{invitation.signedAt?<span className="account-line">Assinado em {dateLabel(invitation.signedAt)}</span>:null}</p>
          </div>
          <div className="actions invitation-item-actions">{invitation.status==='signed'&&invitation.documentId?
