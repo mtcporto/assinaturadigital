@@ -11,18 +11,18 @@ const PAGE_SIZE = 25;
 
 type Invitation = {
  id: string; fileName: string; recipientEmail: string; status: string;
- createdAt: string; expiresAt: string; signedAt: string | null; documentId: string | null; emailStatus:string | null;
+ createdAt: string; expiresAt: string; signedAt: string | null; documentId: string | null; emailStatus:string | null; signedCount:number;recipientCount:number;
 };
 type Month = {key:string; total:number};
 type Filter='todos'|'pendentes'|'assinados'|'expirados'|'cancelados';
 const FILTERS:{key:Filter;label:string}[]=[{key:'todos',label:'Todos'},{key:'pendentes',label:'Pendentes'},{key:'assinados',label:'Assinados'},{key:'expirados',label:'Expirados'},{key:'cancelados',label:'Cancelados'}];
-function condition(filter:Filter){const now="datetime('now')";switch(filter){case 'pendentes':return `r.status='pending' AND r.expires_at > strftime('%Y-%m-%dT%H:%M:%fZ',${now})`;case 'assinados':return "r.status='signed' AND r.document_id IS NOT NULL";case 'expirados':return "(r.status='expired' OR (r.status='pending' AND r.expires_at <= strftime('%Y-%m-%dT%H:%M:%fZ',datetime('now'))))";case 'cancelados':return "r.status='cancelled'";default:return '1=1';}}
+function condition(filter:Filter){const now="datetime('now')";switch(filter){case 'pendentes':return `r.status='pending' AND r.expires_at > strftime('%Y-%m-%dT%H:%M:%fZ',${now})`;case 'assinados':return "r.status='signed' AND EXISTS (SELECT 1 FROM envelope_signatures s WHERE s.recipient_id=r.id)";case 'expirados':return "(r.status='expired' OR (r.status='pending' AND r.expires_at <= strftime('%Y-%m-%dT%H:%M:%fZ',datetime('now'))))";case 'cancelados':return "r.status='cancelled'";default:return '1=1';}}
 
 const monthName = (key:string) => new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(key+'-01T12:00:00Z'));
 const monthTitle = (key:string) => { const name=monthName(key);return name.charAt(0).toUpperCase()+name.slice(1); };
 
 function statusLabel(row: Invitation) {
- if (row.status === 'signed' && row.documentId) return 'Assinado';
+ if (row.status === 'signed') return 'Assinado';
  if (row.status === 'cancelled') return 'Cancelado';
  if (row.status === 'expired' || (row.status === 'pending' && Date.parse(row.expiresAt) <= Date.now())) return 'Expirado';
  return 'Aguardando assinatura';
@@ -60,7 +60,7 @@ export default async function InvitePage({searchParams}:{searchParams:Promise<{m
    const requestedPage = pagina && /^\d{1,6}$/.test(pagina) ? Number(pagina) : 1;
    currentPage = Math.min(Math.max(1,requestedPage),Math.max(1,Math.ceil(total/PAGE_SIZE)));
    const result = await client.execute({
-    sql: `SELECT r.id, e.file_name, r.email, r.status, r.created_at, r.expires_at, r.signed_at, r.document_id, m.status AS email_status
+    sql: `SELECT r.id, e.file_name, r.email, r.status, r.created_at, r.expires_at, r.signed_at, r.document_id, m.status AS email_status, (SELECT COUNT(*) FROM envelope_recipients rr WHERE rr.envelope_id=r.envelope_id) AS recipient_count, (SELECT COUNT(*) FROM envelope_recipients rr WHERE rr.envelope_id=r.envelope_id AND rr.status='signed') AS signed_count
           FROM envelope_recipients r JOIN signing_envelopes e ON e.id=r.envelope_id
           LEFT JOIN invitation_email_deliveries m ON m.recipient_id=r.id
           WHERE e.owner_id=? AND substr(r.created_at,1,7)=? AND ${where}
@@ -72,7 +72,7 @@ export default async function InvitePage({searchParams}:{searchParams:Promise<{m
     status:String(row.status),createdAt:String(row.created_at),expiresAt:String(row.expires_at),
     signedAt:row.signed_at==null?null:String(row.signed_at),
     documentId:row.document_id==null?null:String(row.document_id),
-    emailStatus:row.email_status==null?null:String(row.email_status)
+    emailStatus:row.email_status==null?null:String(row.email_status),signedCount:Number(row.signed_count),recipientCount:Number(row.recipient_count)
    }));
   }
  } catch { error = true; }
@@ -116,7 +116,7 @@ export default async function InvitePage({searchParams}:{searchParams:Promise<{m
         {invitations.map(invitation=><article className="document-item" key={invitation.id}>
          <div>
           <strong>{invitation.fileName}</strong>
-          <p className="account-line">Destinatário: {invitation.recipientEmail}</p>
+          <p className="account-line">Destinatário: {invitation.recipientEmail}</p><p className="account-line">Contrato: {invitation.signedCount} de {invitation.recipientCount} assinaturas registradas</p>
           <p className="account-line">Criado em {dateLabel(invitation.createdAt)} · Prazo: {dateLabel(invitation.expiresAt)}</p>
           <p className="account-line">E-mail: {invitation.emailStatus==='delivered'?'Entregue':invitation.emailStatus==='accepted'?'Aceito para envio':invitation.emailStatus==='bounced'?'Devolvido':invitation.emailStatus==='complained'?'Marcado como spam':invitation.emailStatus==='delayed'?'Entrega atrasada':invitation.emailStatus==='failed'?'Falha no envio':'Sem registro de envio'}</p>
           <p className="invitation-status-line"><span className={`invitation-status invitation-status--${statusClass(invitation)}`}>{statusLabel(invitation)}</span>{invitation.signedAt?<span className="account-line">Assinado em {dateLabel(invitation.signedAt)}</span>:null}</p>
