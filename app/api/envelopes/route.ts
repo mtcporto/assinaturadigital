@@ -23,7 +23,6 @@ export async function POST(request: Request) {
  if (!(file instanceof File)||(typeof rawEmail!=='string'&&rawEmails.length===0)) return NextResponse.json({error:'file_and_email_required'},{status:400});
  const emails=(rawEmails.length?rawEmails:[rawEmail]).map(v=>typeof v==='string'?v.trim().toLowerCase():'');
  if(emails.length<1||emails.length>10||new Set(emails).size!==emails.length||emails.some(email=>!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254))return NextResponse.json({error:'invalid_recipients'},{status:400});
- if(emails.length>1)return NextResponse.json({error:'multiple_signers_not_ready'},{status:409});
  if(file.size<8||file.size>5*1024*1024) return NextResponse.json({error:'invalid_file_size'},{status:413});
  const pdf=new Uint8Array(await file.arrayBuffer());
  if(new TextDecoder().decode(pdf.slice(0,5))!=='%PDF-') return NextResponse.json({error:'not_a_pdf'},{status:415});
