@@ -6,10 +6,11 @@ export function InviteForm(){
   e.preventDefault();setBusy(true);setMessage('');setUrl('');
   try{
    const response=await fetch('/api/envelopes',{method:'POST',body:new FormData(e.currentTarget)});
-   const data=await response.json();
-   if(!response.ok){setMessage('Não foi possível criar o convite ('+(data.error??response.status)+'). Confira se a migração 003 foi aplicada.');return;}
+   const data: {error?:string;invitationUrl?:string;delivery?:string} | null = await response.json().catch(()=>null);
+   if(!response.ok){setMessage('Não foi possível criar o convite (HTTP '+response.status+(data?.error?' — '+data.error:'')+').');return;}
+   if(!data?.invitationUrl){setMessage('O servidor respondeu sem um link de convite. Confira o histórico antes de tentar novamente.');return;}
    setUrl(data.invitationUrl);setMessage(data.delivery==='sent'?'Convite criado! O Selo enviou o convite por e-mail. O link expira em 7 dias.':data.delivery==='not_configured'?'Convite criado, mas o envio por e-mail não está configurado. Copie o link abaixo.':'Convite criado, mas não foi possível enviar o e-mail. Copie o link abaixo.');
-  }catch{setMessage('Falha de conexão ao criar convite.');}finally{setBusy(false);}
+  }catch(error){setMessage('Não foi possível completar a solicitação. Confira o histórico antes de tentar novamente.');console.error('invite_request_failed',error);}finally{setBusy(false);}
  }
  return <section className="panel signing-panel"><h2>Convidar para assinar</h2><p>Crie um convite individual para outra pessoa. O documento fica armazenado de forma privada.</p>
  <form className="invite-form" onSubmit={submit}><label htmlFor="invite-pdf">Documento PDF (até 5 MB)</label><input className="invite-file" id="invite-pdf" name="file" type="file" accept="application/pdf,.pdf" required/>
