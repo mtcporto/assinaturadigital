@@ -12,7 +12,7 @@ export async function GET(_request:NextRequest,context:{params:Promise<{id:strin
   const result=await db().execute({sql:`SELECT d.object_key,d.sha256,(SELECT json_extract(a.details_json,'$.fileName') FROM audit_events a WHERE a.document_id=d.id AND a.event_type IN ('signed','signed_webauthn') ORDER BY a.created_at LIMIT 1) AS file_name, (SELECT e.file_name FROM envelope_recipients r JOIN signing_envelopes e ON e.id=r.envelope_id WHERE r.document_id=d.id LIMIT 1) AS envelope_file_name FROM documents d WHERE d.id=? AND (d.signer_id=? OR EXISTS (SELECT 1 FROM envelope_recipients r JOIN signing_envelopes e ON e.id=r.envelope_id WHERE r.document_id=d.id AND r.status='signed' AND e.owner_id=? AND e.document_sha256=d.sha256)) LIMIT 1`,args:[id,session.user.id,session.user.id]});
   let record=result.rows[0];
   if(!record){
-   const ledger=await db().execute({sql:`SELECT e.object_key,e.document_sha256 AS sha256,e.file_name AS envelope_file_name FROM envelope_signatures s JOIN signing_envelopes e ON e.id=s.envelope_id JOIN envelope_recipients r ON r.id=s.recipient_id WHERE s.id=? AND s.signer_id=? AND r.status='signed' AND r.envelope_id=e.id AND s.document_sha256=e.document_sha256 LIMIT 1`,args:[id,session.user.id]});
+   const ledger=await db().execute({sql:`SELECT e.object_key,e.document_sha256 AS sha256,e.file_name AS envelope_file_name FROM envelope_signatures s JOIN signing_envelopes e ON e.id=s.envelope_id JOIN envelope_recipients r ON r.id=s.recipient_id WHERE s.id=? AND (s.signer_id=? OR e.owner_id=?) AND r.status='signed' AND r.envelope_id=e.id AND s.document_sha256=e.document_sha256 LIMIT 1`,args:[id,session.user.id,session.user.id]});
    record=ledger.rows[0];
   }
   if(!record) return NextResponse.json({error:'not_found'},{status:404});
