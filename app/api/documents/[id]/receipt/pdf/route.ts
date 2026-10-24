@@ -20,7 +20,7 @@ export async function GET(request: NextRequest, context: {params: Promise<{id:st
   const result = await client.execute({sql:`SELECT d.id, d.sha256, d.signer_id, d.signer_email, d.consent_text, d.consent_at, d.created_at, d.evidence_json, d.evidence_mac, d.status, d.object_key FROM documents d WHERE d.id=? AND (d.signer_id=? OR EXISTS (SELECT 1 FROM envelope_recipients r JOIN signing_envelopes e ON e.id=r.envelope_id WHERE r.document_id=d.id AND r.status='signed' AND e.owner_id=? AND e.document_sha256=d.sha256)) LIMIT 1`,args:[id,session.user.id,session.user.id]});
   const record = result.rows[0];
   if (!record) {
-   const rows=await client.execute({sql:`SELECT s.evidence_json,s.evidence_mac,s.signer_id,s.signer_email,s.document_sha256,s.signed_at,e.object_key FROM envelope_signatures s JOIN signing_envelopes e ON e.id=s.envelope_id JOIN envelope_recipients r ON r.id=s.recipient_id WHERE s.id=? AND s.signer_id=? AND r.status='signed' AND s.document_sha256=e.document_sha256 LIMIT 1`,args:[id,session.user.id]});
+   const rows=await client.execute({sql:`SELECT s.evidence_json,s.evidence_mac,s.signer_id,s.signer_email,s.document_sha256,s.signed_at,e.object_key FROM envelope_signatures s JOIN signing_envelopes e ON e.id=s.envelope_id JOIN envelope_recipients r ON r.id=s.recipient_id WHERE s.id=? AND (s.signer_id=? OR e.owner_id=?) AND r.status='signed' AND s.document_sha256=e.document_sha256 LIMIT 1`,args:[id,session.user.id,session.user.id]});
    const signed=rows.rows[0];
    if(!signed)return NextResponse.json({error:'not_found'},{status:404});
    let evidence:Evidence;
