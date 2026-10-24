@@ -11,7 +11,7 @@ const PAGE_SIZE = 25;
 
 type Invitation = {
  id: string; fileName: string; recipientEmail: string; status: string;
- createdAt: string; expiresAt: string; signedAt: string | null; documentId: string | null; emailStatus:string | null; signedCount:number;recipientCount:number;
+ createdAt: string; expiresAt: string; signedAt: string | null; documentId: string | null; emailStatus:string | null; signedCount:number;recipientCount:number;signatureId:string|null;
 };
 type Month = {key:string; total:number};
 type Filter='todos'|'pendentes'|'assinados'|'expirados'|'cancelados';
@@ -60,7 +60,7 @@ export default async function InvitePage({searchParams}:{searchParams:Promise<{m
    const requestedPage = pagina && /^\d{1,6}$/.test(pagina) ? Number(pagina) : 1;
    currentPage = Math.min(Math.max(1,requestedPage),Math.max(1,Math.ceil(total/PAGE_SIZE)));
    const result = await client.execute({
-    sql: `SELECT r.id, e.file_name, r.email, r.status, r.created_at, r.expires_at, r.signed_at, r.document_id, m.status AS email_status, (SELECT COUNT(*) FROM envelope_recipients rr WHERE rr.envelope_id=r.envelope_id) AS recipient_count, (SELECT COUNT(*) FROM envelope_recipients rr WHERE rr.envelope_id=r.envelope_id AND rr.status='signed') AS signed_count
+    sql: `SELECT r.id, e.file_name, r.email, r.status, r.created_at, r.expires_at, r.signed_at, r.document_id, (SELECT s.id FROM envelope_signatures s WHERE s.recipient_id=r.id LIMIT 1) AS signature_id, m.status AS email_status, (SELECT COUNT(*) FROM envelope_recipients rr WHERE rr.envelope_id=r.envelope_id) AS recipient_count, (SELECT COUNT(*) FROM envelope_recipients rr WHERE rr.envelope_id=r.envelope_id AND rr.status='signed') AS signed_count
           FROM envelope_recipients r JOIN signing_envelopes e ON e.id=r.envelope_id
           LEFT JOIN invitation_email_deliveries m ON m.recipient_id=r.id
           WHERE e.owner_id=? AND substr(r.created_at,1,7)=? AND ${where}
@@ -71,7 +71,7 @@ export default async function InvitePage({searchParams}:{searchParams:Promise<{m
     id:String(row.id),fileName:String(row.file_name),recipientEmail:String(row.email),
     status:String(row.status),createdAt:String(row.created_at),expiresAt:String(row.expires_at),
     signedAt:row.signed_at==null?null:String(row.signed_at),
-    documentId:row.document_id==null?null:String(row.document_id),
+    documentId:row.document_id==null?null:String(row.document_id),signatureId:row.signature_id==null?null:String(row.signature_id),
     emailStatus:row.email_status==null?null:String(row.email_status),signedCount:Number(row.signed_count),recipientCount:Number(row.recipient_count)
    }));
   }
@@ -121,8 +121,8 @@ export default async function InvitePage({searchParams}:{searchParams:Promise<{m
           <p className="account-line">E-mail: {invitation.emailStatus==='delivered'?'Entregue':invitation.emailStatus==='accepted'?'Aceito para envio':invitation.emailStatus==='bounced'?'Devolvido':invitation.emailStatus==='complained'?'Marcado como spam':invitation.emailStatus==='delayed'?'Entrega atrasada':invitation.emailStatus==='failed'?'Falha no envio':'Sem registro de envio'}</p>
           <p className="invitation-status-line"><span className={`invitation-status invitation-status--${statusClass(invitation)}`}>{statusLabel(invitation)}</span>{invitation.signedAt?<span className="account-line">Assinado em {dateLabel(invitation.signedAt)}</span>:null}</p>
          </div>
-         <div className="actions invitation-item-actions">{invitation.status==='signed'&&invitation.documentId?
-          <><a className="secondary-link" href={`/api/documents/${invitation.documentId}`}>Baixar documento</a><a className="secondary-link" href={`/verify/${invitation.documentId}`}>Verificar assinatura</a><details className="invitation-receipts"><summary>Comprovantes</summary><div className="invitation-receipts-links"><a href={`/api/documents/${invitation.documentId}/receipt/pdf`}>Baixar PDF</a><a href={`/api/documents/${invitation.documentId}/receipt`}>Baixar JSON</a></div></details></>:null}{invitation.status==='pending'||invitation.status==='expired'?<RenewInvite id={invitation.id} expired={invitation.status==='expired'||Date.parse(invitation.expiresAt)<=Date.now()}/>:null}{invitation.status==='pending'&&Date.parse(invitation.expiresAt)>Date.now()?<CancelInvite id={invitation.id}/>:null}</div>
+         <div className="actions invitation-item-actions">{invitation.status==='signed'&&(invitation.signatureId||invitation.documentId)?
+          <><a className="secondary-link" href={`/api/documents/${invitation.signatureId??invitation.documentId}`}>Baixar documento</a><a className="secondary-link" href={`/verify/${invitation.signatureId??invitation.documentId}`}>Verificar assinatura</a><details className="invitation-receipts"><summary>Comprovantes</summary><div className="invitation-receipts-links"><a href={`/api/documents/${invitation.signatureId??invitation.documentId}/receipt/pdf`}>Baixar PDF</a><a href={`/api/documents/${invitation.signatureId??invitation.documentId}/receipt`}>Baixar JSON</a></div></details></>:null}{invitation.status==='pending'||invitation.status==='expired'?<RenewInvite id={invitation.id} expired={invitation.status==='expired'||Date.parse(invitation.expiresAt)<=Date.now()}/>:null}{invitation.status==='pending'&&Date.parse(invitation.expiresAt)>Date.now()?<CancelInvite id={invitation.id}/>:null}</div>
         </article>)}
        </div>
        {totalPages>1?<nav className="actions" aria-label="Páginas dos convites" style={{marginTop:'1.5rem'}}>
