@@ -31,11 +31,11 @@ export function VerifyClient({ id }: { id: string }) {
     fetch('/api/verify/' + encodeURIComponent(id), { cache: 'no-store' })
       .then(async response => {
         const data = await response.json() as Verification;
-        if (!response.ok && data.reason === 'verification_unavailable') throw new Error('Serviço de verificação indisponível.');
+        if (!response.ok && (data.reason === 'verification_unavailable' || response.status >= 500)) throw new Error('Serviço de verificação indisponível.');
         return data;
       })
       .then(data => { if (active) setRecord(data); })
-      .catch(() => { if (active) setError('Não foi possível consultar o registro. Tente atualizar a página.'); })
+      .catch(() => { if (active) setError('Não foi possível consultar as assinaturas agora. Verifique sua conexão e tente novamente mais tarde.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [id]);
@@ -57,7 +57,7 @@ export function VerifyClient({ id }: { id: string }) {
       const hash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
       setFileHash(hash);
     } catch {
-      setFileError('Não foi possível calcular o SHA-256 deste arquivo.');
+      setFileError('Não foi possível conferir este arquivo. Tente novamente com o PDF original.');
     } finally {
       setChecking(false);
     }
@@ -79,7 +79,7 @@ export function VerifyClient({ id }: { id: string }) {
         {record.createdAt && <p><strong>Registrado em:</strong> {new Date(record.createdAt).toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'medium', timeZone: 'America/Sao_Paulo' })}</p>}
         <p><strong>SHA-256 do PDF original:</strong></p>
         <p style={hashStyle}>{record.documentSha256}</p></details>
-      </> : <><h2 style={{ color: '#b91c1c' }}>Registro não validado</h2><p role="alert">{record?.reason === 'not_found' ? 'Registro não encontrado.' : 'O registro não passou na verificação de integridade ou o identificador é inválido.'}</p></>}
+      </> : <><h2 style={{ color: '#b91c1c' }}>Registro não validado</h2><p role="alert">{record?.reason === 'not_found' ? 'Não encontramos uma assinatura com esse código. Confira se copiou o código inteiro ou use o QR Code do comprovante.' : 'Não foi possível confirmar a validade desta assinatura. Confira o código e, se o problema continuar, solicite um novo comprovante.'}</p></>}
     </div>
     <details style={box}>
       <summary style={{cursor:"pointer",fontWeight:700}}>Tenho o arquivo PDF e quero conferir se é o mesmo documento</summary>
@@ -92,7 +92,7 @@ export function VerifyClient({ id }: { id: string }) {
       {file && fileHash && <div role="status">
         <p><strong>Arquivo:</strong> {file.name}</p>
         <p><strong>SHA-256 calculado:</strong> <span style={hashStyle}>{fileHash}</span></p>
-        {record?.valid ? <p style={{ fontWeight: 700, color: matches ? '#166534' : '#b91c1c' }}>{matches ? '✓ Integridade do PDF confirmada: os bytes correspondem ao documento registrado.' : '✗ Integridade do PDF não confirmada: este arquivo é diferente do documento registrado.'}</p> : <p>Não é possível confirmar correspondência sem um registro válido.</p>}
+        {record?.valid ? <p style={{ fontWeight: 700, color: matches ? '#166534' : '#b91c1c' }}>{matches ? '✓ O PDF corresponde exatamente ao arquivo registrado no Selo.' : '✗ Este PDF não corresponde ao documento registrado. Confira se selecionou o arquivo original correto.'}</p> : <p>Não é possível confirmar correspondência sem um registro válido.</p>}
       </div>}
     </details>
     <div className="actions" style={{marginTop:24,flexWrap:'wrap'}}><a className="button-link" href={'/api/documents/'+encodeURIComponent(id)}>Baixar PDF (acesso autorizado)</a><a className="secondary-link" href="/documentos">Meus documentos →</a><a className="secondary-link" href="/">Assinar outro PDF</a><a className="secondary-link" href="/verificar">Verificar outro registro</a></div><p className="notice"><a href={'/api/verify/' + encodeURIComponent(id)}>Consultar resposta JSON</a></p>
