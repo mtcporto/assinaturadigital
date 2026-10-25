@@ -3,6 +3,7 @@
 import { useEffect, useState, type ChangeEvent } from 'react';
 
 type Verification = {
+  contract?: {fileName:string;totalSigners:number;verifiedSignatures:number;completed:boolean;signers:{email:string;status:string;signedAt:string|null;verified:boolean}[]}|null;
   valid: boolean;
   reason: string;
   documentSha256?: string;
@@ -64,21 +65,22 @@ export function VerifyClient({ id }: { id: string }) {
   const matches = Boolean(record?.valid && record.documentSha256 && fileHash && fileHash.toLowerCase() === record.documentSha256.toLowerCase());
 
   return <section>
-    <span className="eyebrow">Verificação pública</span><h1>Verificar assinatura eletrônica</h1>
-    <p className="lead">Consulte o registro eletrônico de assinatura e, se necessário, confira a integridade de um PDF recebido.</p>
-    <p>Identificador: <code style={hashStyle}>{id}</code></p>
+    <span className="eyebrow">Consulta pública</span><h1>Confira as assinaturas do documento.</h1>
+    <p className="lead">Veja se o documento foi assinado e se ainda existem assinaturas pendentes.</p>
+
     <div style={box} aria-live="polite">
       {loading ? <p>Consultando registro...</p> : error ? <p role="alert">{error}</p> : record?.valid ? <>
-        <h2 style={{ color: '#166534' }}>✓ Registro de evidências válido</h2>
+        <h2 style={{ color: '#166534' }}>✓ Assinatura verificada</h2>
         <p>O registro eletrônico e suas evidências foram validados. A conferência de um arquivo externo é opcional.</p>
-        <p><strong>Confirmação da assinatura:</strong> {record.authentication === 'webauthn-passkey' ? 'Passkey (WebAuthn)' : record.authentication === 'legacy' ? 'Registro eletrônico legado' : 'Não informada'}</p>
+        {record.contract && <div style={{padding:'18px 0',borderBottom:'1px solid var(--line)'}}><h2>{record.contract.fileName}</h2><h3 style={{color:record.contract.completed?'#166534':'#8a5a32'}}>{record.contract.completed?'✓ Documento assinado por todos':'Documento aguardando assinaturas'}</h3><p><strong>{record.contract.verifiedSignatures} de {record.contract.totalSigners} assinaturas verificadas</strong></p><ul>{record.contract.signers.map((signer,index)=><li key={index} style={{marginBottom:12}}><strong>{signer.email}</strong> — {signer.verified?'Assinatura verificada':signer.status==='pending'?'Aguardando assinatura':'Assinatura não verificada'}{signer.signedAt&&signer.verified?<span> · {new Date(signer.signedAt).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Sao_Paulo'})}</span>:null}</li>)}</ul><p className="notice">Os e-mails são parcialmente ocultos nesta consulta pública.</p></div>}
+        <details style={{marginTop:18}}><summary style={{cursor:'pointer',fontWeight:700}}>Detalhes técnicos da assinatura</summary><p>Identificador: <code style={hashStyle}>{id}</code></p><p><strong>Confirmação da assinatura:</strong> {record.authentication === 'webauthn-passkey' ? 'Passkey (WebAuthn)' : record.authentication === 'legacy' ? 'Registro eletrônico legado' : 'Não informada'}</p>
         {record.createdAt && <p><strong>Registrado em:</strong> {new Date(record.createdAt).toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'medium', timeZone: 'America/Sao_Paulo' })}</p>}
         <p><strong>SHA-256 do PDF original:</strong></p>
-        <p style={hashStyle}>{record.documentSha256}</p>
+        <p style={hashStyle}>{record.documentSha256}</p></details>
       </> : <><h2 style={{ color: '#b91c1c' }}>Registro não validado</h2><p role="alert">{record?.reason === 'not_found' ? 'Registro não encontrado.' : 'O registro não passou na verificação de integridade ou o identificador é inválido.'}</p></>}
     </div>
     <details style={box}>
-      <summary style={{cursor:"pointer",fontWeight:700}}>Conferir a integridade de um PDF recebido (opcional)</summary>
+      <summary style={{cursor:"pointer",fontWeight:700}}>Tenho o arquivo PDF e quero conferir se é o mesmo documento</summary>
       <h2>Comparar arquivo com o registro</h2>
       <p>Use esta opção apenas para conferir um PDF recebido fora do Selo. O SHA-256 é calculado no navegador, sem enviar o arquivo ao servidor.</p>
       <label>Arquivo PDF<br/><input type="file" accept=".pdf,application/pdf" onChange={selectFile} /></label>
