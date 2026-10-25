@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '../../../../lib/db';
 import { checkRecordIntegrity, type DocumentRecord, type AuditEvent } from '../../../../lib/audit-integrity';
 import { verifySeal, type Evidence } from '../../../../lib/evidence';
+import { publicContractSummary } from '../../../../lib/contract-summary';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,7 +25,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       try{
         const evidence=JSON.parse(String(signature.evidence_json)) as Evidence;
         const valid=verifySeal(evidence,String(signature.evidence_mac))&&evidence.id===id&&evidence.version===2&&!!evidence.webauthn&&evidence.signerId===signature.signer_id&&evidence.signerEmail===signature.signer_email&&evidence.documentSha256===signature.document_sha256&&evidence.documentSha256===signature.envelope_sha256&&signature.recipient_status==='signed';
-        return NextResponse.json({valid,reason:valid?'record_seal_valid':'invalid_evidence',documentSha256:valid?evidence.documentSha256:undefined,createdAt:valid?evidence.createdAt:undefined,authentication:valid?'webauthn-passkey':undefined,note:valid?'Registro autenticado. Para validar um PDF específico, compare seu SHA-256 ao documentSha256 retornado.':undefined},{status:valid?200:422,headers:{'Cache-Control':'no-store'}});
+        return NextResponse.json({valid,contract:valid?await publicContractSummary(id):undefined,reason:valid?'record_seal_valid':'invalid_evidence',documentSha256:valid?evidence.documentSha256:undefined,createdAt:valid?evidence.createdAt:undefined,authentication:valid?'webauthn-passkey':undefined,note:valid?'Registro autenticado. Para validar um PDF específico, compare seu SHA-256 ao documentSha256 retornado.':undefined},{status:valid?200:422,headers:{'Cache-Control':'no-store'}});
       }catch{return NextResponse.json({valid:false,reason:'invalid_evidence'},{status:422});}
     }
     const eventResult = await db().execute({
@@ -34,8 +35,9 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
     const integrity = checkRecordIntegrity(record as unknown as DocumentRecord, eventResult.rows as unknown as AuditEvent[]);
     const valid = integrity.valid;
     const evidence = valid ? JSON.parse(String(record.evidence_json)) as { documentSha256: string; createdAt: string; version: number } : null;
+    const contract=valid?await publicContractSummary(id):null;
     return NextResponse.json(
-      { valid, reason: valid ? 'record_seal_valid' : 'invalid_evidence', documentSha256: valid ? evidence?.documentSha256 : undefined, createdAt: valid ? evidence?.createdAt : undefined, authentication: valid ? (evidence?.version === 2 ? 'webauthn-passkey' : 'legacy') : undefined,
+      { valid, contract, reason: valid ? 'record_seal_valid' : 'invalid_evidence', documentSha256: valid ? evidence?.documentSha256 : undefined, createdAt: valid ? evidence?.createdAt : undefined, authentication: valid ? (evidence?.version === 2 ? 'webauthn-passkey' : 'legacy') : undefined,
         note: valid ? 'Registro autenticado. Para validar um PDF específico, compare seu SHA-256 ao documentSha256 retornado.' : undefined },
       { status: valid ? 200 : 422, headers: { 'Cache-Control': 'no-store' } },
     );
