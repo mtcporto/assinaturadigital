@@ -5,6 +5,7 @@ import { checkRecordIntegrity, type DocumentRecord, type AuditEvent } from '../.
 import { sha256, verifySeal, type Evidence } from '../../../../../../lib/evidence';
 import { getPdf } from '../../../../../../lib/r2';
 import { createReceiptPdf } from '../../../../../../lib/receipt-pdf';
+import { contractSummary } from '../../../../../../lib/contract-summary';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,7 +29,8 @@ export async function GET(request: NextRequest, context: {params: Promise<{id:st
    if(!verifySeal(evidence,String(signed.evidence_mac))||evidence.id!==id||evidence.signerId!==signed.signer_id||evidence.signerEmail!==signed.signer_email||evidence.documentSha256!==signed.document_sha256||evidence.version!==2||!evidence.webauthn)return NextResponse.json({error:'invalid_evidence'},{status:422});
    const original=await getPdf(String(signed.object_key));
    if(sha256(original)!==String(signed.document_sha256))return NextResponse.json({error:'pdf_hash_mismatch'},{status:422});
-   const receiptPdf=await createReceiptPdf({documentId:id,documentSha256:String(signed.document_sha256),signedAt:String(signed.signed_at),signerEmail:String(signed.signer_email),authentication:'webauthn-passkey',verificationUrl:new URL('/verify/'+id,request.url).toString()});
+   const contract=await contractSummary(id,session.user.id,request.url);
+   const receiptPdf=await createReceiptPdf({contract:contract??undefined,documentId:id,documentSha256:String(signed.document_sha256),signedAt:String(signed.signed_at),signerEmail:String(signed.signer_email),authentication:'webauthn-passkey',verificationUrl:new URL('/verify/'+id,request.url).toString()});
    return new NextResponse(Buffer.from(receiptPdf),{headers:{'Content-Type':'application/pdf','Content-Disposition':`attachment; filename="selo-comprovante-${id}.pdf"`,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
   }
   const events = await client.execute({sql:'SELECT event_type, actor_id, details_json FROM audit_events WHERE document_id=?',args:[id]});
@@ -37,8 +39,9 @@ export async function GET(request: NextRequest, context: {params: Promise<{id:st
   const pdf = await getPdf(String(record.object_key));
   if (sha256(pdf) !== String(record.sha256)) return NextResponse.json({error:'pdf_hash_mismatch'},{status:422});
   const evidence = JSON.parse(String(record.evidence_json)) as {version:number;webauthn?:{credentialId:string;origin:string;rpId:string}};
+  const contract=await contractSummary(id,session.user.id,request.url);
   const receiptPdf = await createReceiptPdf({
-   documentId:id,documentSha256:String(record.sha256),signedAt:String(record.created_at),
+   contract:contract??undefined,documentId:id,documentSha256:String(record.sha256),signedAt:String(record.created_at),
    signerEmail:String(record.signer_email),
    authentication:evidence.version===2?'webauthn-passkey':'legacy',
    verificationUrl:new URL('/verify/'+id,request.url).toString()
