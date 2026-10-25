@@ -39,7 +39,16 @@ export async function GET(request: NextRequest, context: {params: Promise<{id:st
    'X-Content-Type-Options':'nosniff'
   }});
  } catch (error) {
-  console.error('combined_pdf_generation_failed',error instanceof Error?error.message:'unknown_error');
+  const reason = error instanceof Error ? error.message : 'unknown_error';
+  console.error('combined_pdf_generation_failed', reason);
+  // pdf-lib does not support encrypted PDFs. ignoreEncryption is not a
+  // decryption mechanism and can produce incomplete presentation copies.
+  if (/encrypted|encryption/i.test(reason)) {
+   return NextResponse.json({
+    error: 'encrypted_pdf_not_supported',
+    message: 'Este PDF possui proteção ou criptografia. O Selo preservou o documento original e as assinaturas, mas não consegue anexar o comprovante ao mesmo arquivo com segurança. Baixe o PDF original e os comprovantes técnicos separadamente.'
+   }, {status:422});
+  }
   return NextResponse.json({error:'combined_pdf_unavailable',message:'Não foi possível preparar o PDF com comprovante. O documento original e os comprovantes continuam disponíveis separadamente.'},{status:422});
  }
 }
