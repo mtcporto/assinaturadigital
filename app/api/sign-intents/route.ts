@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { validatePdfForSigning, INCOMPATIBLE_PDF_MESSAGE } from '../../../lib/pdf-compatibility';
 import { randomUUID } from 'node:crypto';
 import { currentSigner, relyingParty } from '../../../lib/webauthn';
 import { db } from '../../../lib/db';
@@ -23,6 +24,8 @@ export async function POST(request: Request) {
  if (file.size < 8 || file.size > 5 * 1024 * 1024) return NextResponse.json({ error: 'invalid_file_size' }, { status: 413 });
  const pdf = new Uint8Array(await file.arrayBuffer());
  if (new TextDecoder().decode(pdf.slice(0,5)) !== '%PDF-') return NextResponse.json({ error: 'not_a_pdf' }, { status: 415 });
+ const compatibility = await validatePdfForSigning(pdf);
+ if (compatibility !== 'ok') return NextResponse.json({error:compatibility==='protected'?'protected_pdf_not_supported':'invalid_pdf',message:compatibility==='protected'?INCOMPATIBLE_PDF_MESSAGE:'Não foi possível processar este PDF. Exporte uma nova cópia e tente novamente.'},{status:422});
  const id = randomUUID(), objectKey = `pending/${id}.pdf`, now = new Date(), expiresAt = new Date(now.getTime() + 5 * 60000);
  const hash = sha256(pdf);
  const client = db();
