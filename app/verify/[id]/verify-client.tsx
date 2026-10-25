@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ChangeEvent } from 'react';
+import { VerificationShare } from '../../components/verification-share';
 
 type Verification = {
   contract?: {fileName:string;totalSigners:number;verifiedSignatures:number;completed:boolean;signers:{email:string;status:string;signedAt:string|null;verified:boolean}[]}|null;
@@ -73,6 +74,7 @@ export function VerifyClient({ id }: { id: string }) {
         <h2 style={{ color: '#166534' }}>✓ Assinatura verificada</h2>
         <p>O registro eletrônico e suas evidências foram validados. A conferência de um arquivo externo é opcional.</p>
         {record.contract && <div style={{padding:'18px 0',borderBottom:'1px solid var(--line)'}}><h2>{record.contract.fileName}</h2><h3 style={{color:record.contract.completed?'#166534':'#8a5a32'}}>{record.contract.completed?'✓ Documento assinado por todos':'Documento aguardando assinaturas'}</h3><p><strong>{record.contract.verifiedSignatures} de {record.contract.totalSigners} assinaturas verificadas</strong></p><ul>{record.contract.signers.map((signer,index)=><li key={index} style={{marginBottom:12}}><strong>{signer.email}</strong> — {signer.verified?'Assinatura verificada':signer.status==='pending'?'Aguardando assinatura':'Assinatura não verificada'}{signer.signedAt&&signer.verified?<span> · {new Date(signer.signedAt).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Sao_Paulo'})}</span>:null}</li>)}</ul><p className="notice">Os e-mails são parcialmente ocultos nesta consulta pública.</p></div>}
+        <VerificationShare id={id}/>
         <details style={{marginTop:18}}><summary style={{cursor:'pointer',fontWeight:700}}>Detalhes técnicos da assinatura</summary><p>Identificador: <code style={hashStyle}>{id}</code></p><p><strong>Confirmação da assinatura:</strong> {record.authentication === 'webauthn-passkey' ? 'Passkey (WebAuthn)' : record.authentication === 'legacy' ? 'Registro eletrônico legado' : 'Não informada'}</p>
         {record.createdAt && <p><strong>Registrado em:</strong> {new Date(record.createdAt).toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'medium', timeZone: 'America/Sao_Paulo' })}</p>}
         <p><strong>SHA-256 do PDF original:</strong></p>
