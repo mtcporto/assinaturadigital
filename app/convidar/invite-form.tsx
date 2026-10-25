@@ -25,8 +25,8 @@ export function InviteForm(){
    const payload=new FormData(form);
    if(extraEmails.length){payload.delete('email');for(const email of emails)payload.append('emails',email);}
    const response=await fetch('/api/envelopes',{method:'POST',body:payload});
-   const data: {error?:string;invitationUrl?:string;delivery?:string;recipients?:{recipientEmail:string;invitationUrl:string;delivery:string}[]} | null = await response.json().catch(()=>null);
-   if(!response.ok){setMessage(response.status===413?'Arquivo muito grande. O limite permitido é de 5 MB. Selecione um PDF menor.':'Não foi possível criar o convite (HTTP '+response.status+(data?.error?' — '+data.error:'')+').');return;}
+   const data: {message?:string;error?:string;invitationUrl?:string;delivery?:string;recipients?:{recipientEmail:string;invitationUrl:string;delivery:string}[]} | null = await response.json().catch(()=>null);
+   if(!response.ok){if(response.status===422){setFileError(data?.message??'Este PDF não é compatível com o Selo. Exporte uma cópia sem proteção e tente novamente.');return;}setMessage(response.status===413?'Arquivo muito grande. O limite permitido é de 5 MB. Selecione um PDF menor.':'Não foi possível criar o convite (HTTP '+response.status+(data?.error?' — '+data.error:'')+').');return;}
    if(!data?.invitationUrl){setMessage('O servidor respondeu sem um link de convite. Confira o histórico antes de tentar novamente.');return;}
    setUrl(data.invitationUrl);setLinks(data.recipients??[]);setMessage(data.delivery==='sent'?'Convite criado! O Selo enviou os convites por e-mail. Os links expiram em 7 dias.':'Convite criado. Confira os links abaixo e compartilhe individualmente com cada destinatário cujo e-mail não foi entregue.');
   }catch(error){setMessage('Não foi possível completar a solicitação. Confira o histórico antes de tentar novamente.');console.error('invite_request_failed',error);}finally{setBusy(false);}
