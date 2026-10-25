@@ -9,7 +9,7 @@ export function SignForm() {
    const form = new FormData(event.currentTarget);
    const intentResponse = await fetch('/api/sign-intents', { method: 'POST', body: form });
    const intent = await intentResponse.json();
-   if (!intentResponse.ok) throw new Error(intent.error || 'Não foi possível preparar a assinatura');
+   if (!intentResponse.ok) throw new Error(intent.message || intent.error || 'Não foi possível preparar a assinatura');
    const optionsResponse = await fetch('/api/webauthn/sign/options', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ intentId: intent.intentId }) });
    const options = await optionsResponse.json();
    if (!optionsResponse.ok) throw new Error(options.error || 'Não foi possível iniciar a confirmação');
