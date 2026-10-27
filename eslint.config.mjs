@@ -5,8 +5,7 @@ const config = [
   {
     ignores: ['.next/**', 'node_modules/**', '.vercel/**'],
     rules: {
-      // Existing navigation and async-loading patterns are intentional in this App Router migration.
-      '@next/next/no-html-link-for-pages': 'off',
+      // Existing async-loading patterns are intentional in this App Router migration.
       'react-hooks/set-state-in-effect': 'off',
     },
   },

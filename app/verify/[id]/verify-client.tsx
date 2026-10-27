@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ChangeEvent } from 'react';
 import { VerificationShare } from '../../components/verification-share';
+import Link from 'next/link';
 
 type Verification = {
   contract?: {fileName:string;totalSigners:number;verifiedSignatures:number;completed:boolean;signers:{email:string;status:string;signedAt:string|null;verified:boolean}[]}|null;
@@ -95,7 +96,7 @@ export function VerifyClient({ id }: { id: string }) {
         {record?.valid ? <p style={{ fontWeight: 700, color: matches ? '#166534' : '#b91c1c' }}>{matches ? '✓ O PDF corresponde exatamente ao arquivo registrado no Selo.' : '✗ Este PDF não corresponde ao documento registrado. Confira se selecionou o arquivo original correto.'}</p> : <p>Não é possível confirmar correspondência sem um registro válido.</p>}
       </div>}
     </details>
-    <div className="actions" style={{marginTop:24,flexWrap:'wrap'}}><a className="button-link" href={'/api/documents/'+encodeURIComponent(id)}>Baixar PDF (acesso autorizado)</a><a className="secondary-link" href="/documentos">Meus documentos →</a><a className="secondary-link" href="/">Assinar outro PDF</a><a className="secondary-link" href="/verificar">Verificar outro registro</a></div><p className="notice"><a href={'/api/verify/' + encodeURIComponent(id)}>Consultar resposta JSON</a></p>
+    <div className="actions" style={{marginTop:24,flexWrap:'wrap'}}><a className="button-link" href={'/api/documents/'+encodeURIComponent(id)}>Baixar PDF (acesso autorizado)</a><Link className="secondary-link" href="/documentos">Meus documentos →</Link><Link className="secondary-link" href="/">Assinar outro PDF</Link><Link className="secondary-link" href="/verificar">Verificar outro registro</Link></div><p className="notice"><a href={'/api/verify/' + encodeURIComponent(id)}>Consultar resposta JSON</a></p>
     <p className="notice">A validação confirma a integridade das evidências e, quando o PDF é comparado, a correspondência dos bytes. Não comprova identidade civil nem equivale a assinatura qualificada ICP-Brasil.</p>
   </section>;
 }
