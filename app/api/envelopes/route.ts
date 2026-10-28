@@ -52,7 +52,8 @@ export async function POST(request: Request) {
    await client.execute({sql:'INSERT INTO invitation_email_deliveries (recipient_id,resend_email_id,status,updated_at) VALUES (?,?,?,?)',args:[recipient.id,delivery.id??null,delivery.status==='sent'?'accepted':'failed',new Date().toISOString()]}).catch(error=>console.error('email_status_save_failed',error instanceof Error?error.message:'unknown'));
    deliveries.push({recipientEmail:recipient.email,invitationUrl,delivery:delivery.status});
   }
-  const allSent=deliveries.every(d=>d.delivery==='sent');
-  return NextResponse.json({envelopeId:id,recipients:deliveries,recipientEmail:deliveries[0].recipientEmail,invitationUrl:deliveries[0].invitationUrl,expiresAt:expires.toISOString(),status:'pending',delivery:allSent?'sent':'not_sent'},{status:201,headers:{'Cache-Control':'private, no-store','Referrer-Policy':'no-referrer'}});
+  const deliveryStatuses=new Set(deliveries.map(d=>d.delivery));
+  const delivery=deliveryStatuses.size===1 ? deliveries[0].delivery : 'not_sent';
+  return NextResponse.json({envelopeId:id,recipients:deliveries,recipientEmail:deliveries[0].recipientEmail,invitationUrl:deliveries[0].invitationUrl,expiresAt:expires.toISOString(),status:'pending',delivery},{status:201,headers:{'Cache-Control':'private, no-store','Referrer-Policy':'no-referrer'}});
  }catch{return NextResponse.json({error:'envelope_creation_failed'},{status:503});}
 }
