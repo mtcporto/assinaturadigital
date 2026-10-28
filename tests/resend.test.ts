@@ -57,12 +57,26 @@ test('live mode is allowed only in explicitly supported local or production envi
   process.env.RESEND_MODE = 'live';
   process.env.RESEND_API_KEY = 'test-key';
   process.env.RESEND_FROM_EMAIL = 'test@example.com';
-  for (const vercelEnv of ['development', undefined]) {
-    if (vercelEnv === undefined) delete process.env.VERCEL_ENV;
-    else process.env.VERCEL_ENV = vercelEnv;
+  for (const vercelEnv of ['development']) {
+    process.env.VERCEL_ENV = vercelEnv;
     globalThis.fetch = async () => new Response(JSON.stringify({ id: 'resend-test-id' }), { status: 200 });
     assert.deepEqual(await sendInvitationEmail(input), { status: 'sent', id: 'resend-test-id' });
   }
+});
+
+test('live mode without VERCEL_ENV requires explicit local authorization', async () => {
+  process.env.RESEND_MODE = 'live';
+  delete process.env.VERCEL_ENV;
+  process.env.RESEND_API_KEY = 'test-key';
+  process.env.RESEND_FROM_EMAIL = 'test@example.com';
+  let calls = 0;
+  globalThis.fetch = async () => { calls++; throw new Error('must not call network'); };
+  assert.deepEqual(await sendInvitationEmail(input), { status: 'disabled' });
+  assert.equal(calls, 0);
+
+  process.env.RESEND_ALLOW_LOCAL_LIVE = 'true';
+  globalThis.fetch = async () => new Response(JSON.stringify({ id: 'resend-local-test-id' }), { status: 200 });
+  assert.deepEqual(await sendInvitationEmail(input), { status: 'sent', id: 'resend-local-test-id' });
 });
 
 test('live mode fails closed for an unexpected Vercel environment', async () => {

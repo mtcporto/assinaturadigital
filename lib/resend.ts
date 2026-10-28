@@ -13,6 +13,10 @@ export async function sendInvitationEmail(input:{to:string;url:string;fileName:s
  if(resendMode==='disabled')return {status:'disabled'};
  // Never allow a Preview deployment to send real messages accidentally.
  const vercelEnv=process.env.VERCEL_ENV;
+ if(resendMode==='live'&&vercelEnv===undefined&&process.env.RESEND_ALLOW_LOCAL_LIVE!=='true'){
+  console.warn('resend_local_live_not_authorized');
+  return {status:'disabled'};
+ }
  if(resendMode==='live'&&vercelEnv!=='production'&&vercelEnv!=='development'&&vercelEnv!==undefined){
   console.warn('resend_live_blocked_in_preview');
   return {status:'disabled'};
